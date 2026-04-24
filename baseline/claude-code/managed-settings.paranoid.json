@@ -1,0 +1,188 @@
+{
+  "$schema": "https://raw.githubusercontent.com/websentry-ai/oacb/main/schemas/managed-settings-0.1.json",
+  "_oacb": {
+    "name": "OACB Claude Code Auto Mode Profile",
+    "version": "0.1.0",
+    "tier": "paranoid",
+    "repo": "https://github.com/websentry-ai/oacb",
+    "supportedClaudeCodeRange": ">=2.1.83 <3.0.0",
+    "description": "Paranoid tier: autonomous mode disabled entirely. Agent operates as review-only. For FedRAMP, classified, or highly regulated environments. Not intended for fleet-wide deployment — apply per-project."
+  },
+
+  "permissions": {
+    "defaultMode": "plan",
+
+    "deny": [
+      "Bash(curl *)",
+      "Bash(wget *)",
+
+      "Bash(rm *)",
+      "Bash(mv * /*)",
+      "Bash(dd *)",
+      "Bash(:(){ :|:& };:)",
+
+      "Bash(terraform *)",
+      "Bash(drizzle-kit *)",
+      "Bash(prisma *)",
+      "Bash(alembic *)",
+
+      "Bash(git push *)",
+      "Bash(git reset --hard*)",
+      "Bash(git rebase *)",
+
+      "Bash(history *)",
+      "Bash(eval *)",
+      "Bash(exec *)",
+
+      "Bash(find * -delete*)",
+      "Bash(find * -exec *)",
+
+      "Bash(sudo *)",
+      "Bash(doas *)",
+      "Bash(su *)",
+
+      "Bash(chmod *)",
+      "Bash(chown *)",
+      "Bash(mount *)",
+      "Bash(umount *)",
+
+      "Bash(iptables *)",
+      "Bash(nft *)",
+      "Bash(pfctl *)",
+
+      "Bash(ssh *)",
+      "Bash(scp *)",
+      "Bash(rsync *)",
+
+      "Bash(ssh-keygen *)",
+      "Bash(gpg *)",
+      "Bash(openssl *)",
+
+      "Bash(docker push *)",
+      "Bash(docker run *)",
+      "Bash(docker exec *)",
+      "Bash(kubectl apply *)",
+      "Bash(kubectl delete *)",
+      "Bash(kubectl exec *)",
+
+      "Bash(aws *)",
+      "Bash(gcloud *)",
+      "Bash(az *)",
+
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/.ssh/**)",
+      "Read(**/.aws/**)",
+      "Read(**/.netrc)",
+      "Read(**/.config/**)",
+      "Read(**/.kube/**)",
+      "Read(**/.docker/**)",
+      "Read(**/.npmrc)",
+      "Read(**/.pypirc)",
+      "Read(**/.m2/**)",
+      "Read(**/.gnupg/**)",
+      "Read(/etc/**)",
+      "Read(/var/**)",
+      "Read(~/Library/**)",
+      "Read(~/.zsh_history)",
+      "Read(~/.bash_history)",
+
+      "Write(**/*)",
+      "Edit(**/*)"
+    ],
+
+    "ask": [
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(grep *)",
+      "Bash(find *)",
+
+      "Read(./.env*)",
+      "Read(./config/**)",
+      "Read(./secrets/**)",
+
+      "Write(./**)",
+      "Edit(./**)",
+
+      "WebFetch(domain:*)"
+    ],
+
+    "allow": [
+      "Bash(ls *)",
+      "Bash(pwd)",
+      "Bash(echo *)",
+
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git branch *)",
+      "Bash(git show *)",
+
+      "Read(./src/**)",
+      "Read(./docs/**)",
+      "Read(./README*)",
+      "Read(./package.json)",
+      "Read(./Cargo.toml)",
+      "Read(./pyproject.toml)",
+      "Read(./go.mod)"
+    ],
+
+    "allowManagedPermissionRulesOnly": true,
+    "allowManagedHooksOnly": true,
+    "allowManagedMcpServersOnly": true,
+    "disableAutoMode": "disable",
+    "disableBypassPermissionsMode": "disable"
+  },
+
+  "autoMode": {
+    "environment": [
+      "$defaults",
+      "PARANOID TIER: auto mode is disabled. This config is for human-in-loop review only."
+    ],
+    "soft_deny": [
+      "$defaults",
+      "Paranoid tier rejects all state-changing actions by default. Every action requires explicit human approval."
+    ]
+  },
+
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-enforce.sh",
+            "timeout": 5000,
+            "env": { "OACB_TIER": "paranoid" }
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-prompt-guard.sh",
+            "timeout": 3000,
+            "env": { "OACB_TIER": "paranoid" }
+          }
+        ]
+      }
+    ],
+    "ConfigChange": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-config-audit.sh",
+            "timeout": 3000,
+            "env": { "OACB_TIER": "paranoid" }
+          }
+        ]
+      }
+    ]
+  }
+}

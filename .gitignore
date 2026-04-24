@@ -1,0 +1,15 @@
+# OACB
+*.log
+.DS_Store
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+
+# Audit logs (local runtime)
+oacb-audit.log
+.oacb_cache.json
+
+# IDE
+.vscode/
+.idea/

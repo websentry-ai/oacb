@@ -1,0 +1,157 @@
+{
+  "$schema": "https://raw.githubusercontent.com/websentry-ai/oacb/main/schemas/managed-settings-0.1.json",
+  "_oacb": {
+    "name": "OACB Claude Code Auto Mode Profile",
+    "version": "0.1.0",
+    "tier": "shadow",
+    "repo": "https://github.com/websentry-ai/oacb",
+    "supportedClaudeCodeRange": ">=2.1.83 <3.0.0",
+    "description": "Shadow tier: AUDIT only, no enforcement. Hook evaluates rules and logs decisions but never blocks a tool call. Deploy first as 2-week observation window before graduating to baseline."
+  },
+
+  "permissions": {
+    "defaultMode": "default",
+
+    "deny": [],
+    "ask": [],
+
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm ci)",
+      "Bash(npm install *)",
+      "Bash(npm test *)",
+      "Bash(pnpm *)",
+      "Bash(yarn *)",
+      "Bash(bun *)",
+      "Bash(uv *)",
+      "Bash(pip install *)",
+      "Bash(cargo build *)",
+      "Bash(cargo test *)",
+      "Bash(cargo run *)",
+      "Bash(go build *)",
+      "Bash(go test *)",
+      "Bash(go run *)",
+      "Bash(make *)",
+
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git pull *)",
+      "Bash(git fetch *)",
+      "Bash(git stash *)",
+      "Bash(git push *)",
+
+      "Bash(gh pr list *)",
+      "Bash(gh pr view *)",
+      "Bash(gh issue list *)",
+      "Bash(gh issue view *)",
+
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(grep *)",
+      "Bash(find *)",
+      "Bash(wc *)",
+      "Bash(sort *)",
+      "Bash(uniq *)",
+      "Bash(awk *)",
+      "Bash(sed *)",
+      "Bash(pwd)",
+      "Bash(cd *)",
+      "Bash(echo *)",
+      "Bash(printf *)",
+
+      "Bash(docker build *)",
+      "Bash(docker run *)",
+      "Bash(docker ps *)",
+      "Bash(docker logs *)",
+      "Bash(docker compose *)",
+
+      "Bash(kubectl get *)",
+      "Bash(kubectl describe *)",
+      "Bash(kubectl logs *)",
+
+      "Read(./**)",
+      "Read(../**)",
+
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:registry.npmjs.org)",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:docs.claude.com)",
+      "WebFetch(domain:docs.anthropic.com)"
+    ],
+
+    "allowManagedPermissionRulesOnly": false,
+    "allowManagedHooksOnly": true,
+    "allowManagedMcpServersOnly": false,
+    "disableBypassPermissionsMode": "disable"
+  },
+
+  "autoMode": {
+    "environment": [
+      "$defaults",
+      "OACB shadow tier — observing behavior, not enforcing"
+    ],
+    "soft_deny": [
+      "$defaults"
+    ]
+  },
+
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-enforce.sh",
+            "timeout": 5000,
+            "env": { "OACB_TIER": "shadow" }
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-mcp-guard.sh",
+            "timeout": 3000,
+            "env": { "OACB_TIER": "shadow" }
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-prompt-guard.sh",
+            "timeout": 3000,
+            "env": { "OACB_TIER": "shadow" }
+          }
+        ]
+      }
+    ],
+    "ConfigChange": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-config-audit.sh",
+            "timeout": 3000,
+            "env": { "OACB_TIER": "shadow" }
+          }
+        ]
+      }
+    ]
+  }
+}

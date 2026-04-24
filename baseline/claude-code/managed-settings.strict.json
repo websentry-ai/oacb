@@ -1,0 +1,268 @@
+{
+  "$schema": "https://raw.githubusercontent.com/websentry-ai/oacb/main/schemas/managed-settings-0.1.json",
+  "_oacb": {
+    "name": "OACB Claude Code Auto Mode Profile",
+    "version": "0.1.0",
+    "tier": "strict",
+    "repo": "https://github.com/websentry-ai/oacb",
+    "supportedClaudeCodeRange": ">=2.1.83 <3.0.0",
+    "description": "Strict tier: BLOCK all deny patterns, REQUIRE_SLACK_APPROVAL on grey. Intended for pre-production, regulated teams, or teams handling customer data. Extends baseline with additional deny patterns and out-of-band approval for asks."
+  },
+
+  "permissions": {
+    "defaultMode": "acceptEdits",
+
+    "deny": [
+      "Bash(curl *)",
+      "Bash(wget *)",
+
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)",
+      "Bash(rm -rf ${HOME}*)",
+      "Bash(rm -rf $HOME*)",
+      "Bash(rm -fr /*)",
+      "Bash(rm -fr ~*)",
+      "Bash(rm -Rf /*)",
+      "Bash(:(){ :|:& };:)",
+
+      "Bash(terraform destroy *)",
+      "Bash(terraform apply -auto-approve*)",
+      "Bash(terraform state rm *)",
+
+      "Bash(drizzle-kit push --force*)",
+      "Bash(prisma migrate reset *)",
+      "Bash(alembic downgrade *)",
+
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git push --force-with-lease *main*)",
+      "Bash(git push --force-with-lease *master*)",
+      "Bash(git push --force-with-lease *release/*)",
+
+      "Bash(history *)",
+      "Bash(eval *)",
+
+      "Bash(find / -delete*)",
+      "Bash(find ~ -delete*)",
+
+      "Bash(sudo *)",
+      "Bash(doas *)",
+
+      "Bash(chmod -R *)",
+      "Bash(chown -R *)",
+      "Bash(mount *)",
+      "Bash(umount *)",
+
+      "Bash(iptables *)",
+      "Bash(nft *)",
+      "Bash(pfctl *)",
+
+      "Bash(ssh-keygen *)",
+      "Bash(gpg --import*)",
+      "Bash(gpg --delete-key*)",
+
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/.ssh/**)",
+      "Read(**/.aws/credentials)",
+      "Read(**/.aws/config)",
+      "Read(**/.netrc)",
+      "Read(**/.config/gh/**)",
+      "Read(**/.config/hub/**)",
+      "Read(**/.kube/config)",
+      "Read(**/.docker/config.json)",
+      "Read(**/.npmrc)",
+      "Read(**/.pypirc)",
+      "Read(**/.m2/settings.xml)",
+      "Read(**/.gnupg/**)",
+      "Read(/etc/shadow)",
+      "Read(/etc/sudoers)",
+      "Read(/var/log/**)",
+
+      "Write(**/.claude/**)",
+      "Write(**/.cursor/**)",
+      "Write(**/.codex/**)",
+      "Write(**/CLAUDE.md)",
+      "Write(**/AGENTS.md)",
+      "Write(/etc/**)",
+      "Write(/var/**)",
+      "Write(~/.ssh/**)",
+      "Edit(**/.claude/settings*.json)",
+      "Edit(**/.claude/hooks/**)",
+      "Edit(**/CLAUDE.md)",
+      "Edit(**/AGENTS.md)",
+
+      "WebFetch(domain:*)"
+    ],
+
+    "ask": [
+      "Bash(git push *)",
+      "Bash(npm publish *)",
+      "Bash(pnpm publish *)",
+      "Bash(cargo publish *)",
+      "Bash(pip upload *)",
+      "Bash(twine upload *)",
+      "Bash(gem push *)",
+
+      "Bash(docker push *)",
+      "Bash(kubectl apply *)",
+      "Bash(kubectl delete *)",
+      "Bash(kubectl exec *)",
+      "Bash(helm install *)",
+      "Bash(helm upgrade *)",
+
+      "Bash(terraform apply *)",
+      "Bash(terraform import *)",
+
+      "Bash(aws iam *)",
+      "Bash(aws s3 rm *)",
+      "Bash(aws s3api delete-*)",
+      "Bash(gcloud iam *)",
+      "Bash(az role *)",
+
+      "Bash(drizzle-kit push *)",
+      "Bash(prisma migrate *)",
+      "Bash(alembic upgrade *)",
+
+      "Write(**/package.json)",
+      "Write(**/Cargo.toml)",
+      "Write(**/go.mod)",
+      "Write(**/pyproject.toml)",
+      "Write(**/Dockerfile)",
+      "Write(**/docker-compose*.yml)"
+    ],
+
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm ci)",
+      "Bash(npm install *)",
+      "Bash(npm test *)",
+      "Bash(pnpm *)",
+      "Bash(yarn *)",
+      "Bash(bun *)",
+      "Bash(uv *)",
+      "Bash(cargo build *)",
+      "Bash(cargo test *)",
+      "Bash(go build *)",
+      "Bash(go test *)",
+      "Bash(make *)",
+
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git branch *)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git pull *)",
+      "Bash(git fetch *)",
+
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(grep *)",
+      "Bash(find *)",
+      "Bash(pwd)",
+      "Bash(echo *)",
+
+      "Bash(kubectl get *)",
+      "Bash(kubectl describe *)",
+      "Bash(kubectl logs *)",
+
+      "Read(./**)",
+
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:registry.npmjs.org)",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:crates.io)",
+      "WebFetch(domain:docs.claude.com)",
+      "WebFetch(domain:docs.anthropic.com)"
+    ],
+
+    "allowManagedPermissionRulesOnly": true,
+    "allowManagedHooksOnly": true,
+    "allowManagedMcpServersOnly": true,
+    "disableBypassPermissionsMode": "disable"
+  },
+
+  "autoMode": {
+    "environment": [
+      "$defaults",
+      "OACB strict tier — regulated / pre-production / customer-data",
+      "Source control: managed org repos only",
+      "Production deploys: CI-only from protected branches",
+      "All grey-area actions require out-of-band approval"
+    ],
+    "soft_deny": [
+      "$defaults",
+      "Never run terraform destroy under any circumstance",
+      "Never force-push to any branch",
+      "Never commit .env files or files containing API keys",
+      "Never run database migration --force or --auto-approve flags",
+      "Never run curl | bash or wget | bash patterns",
+      "Never read SSH private keys, AWS credentials, or shell history files",
+      "Never modify .claude/, .cursor/, .codex/, or agent config directories",
+      "Never invoke sudo, doas, or privilege-escalation tooling",
+      "Never modify iptables, nftables, or firewall configuration"
+    ],
+    "allow": [
+      "$defaults",
+      "Running build, test, lint, typecheck on feature branches",
+      "Opening PRs to protected branches (require human review)",
+      "Reading local source code"
+    ]
+  },
+
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-enforce.sh",
+            "timeout": 5000,
+            "env": { "OACB_TIER": "strict" }
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-mcp-guard.sh",
+            "timeout": 3000,
+            "env": { "OACB_TIER": "strict" }
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-prompt-guard.sh",
+            "timeout": 3000,
+            "env": { "OACB_TIER": "strict" }
+          }
+        ]
+      }
+    ],
+    "ConfigChange": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-config-audit.sh",
+            "timeout": 3000,
+            "env": { "OACB_TIER": "strict" }
+          }
+        ]
+      }
+    ]
+  }
+}

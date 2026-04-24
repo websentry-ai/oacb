@@ -1,0 +1,103 @@
+# Security Policy — OACB
+
+## Reporting security issues
+
+**Email:** security@unboundsecurity.ai
+**GPG:** key ID and fingerprint published at https://unboundsecurity.ai/.well-known/security.txt
+**Alternative:** GitHub Security Advisories on this repository (preferred for non-urgent findings)
+
+Please report:
+
+- Denylist rule bypasses (including novel obfuscation, compound-command variants, encoding tricks)
+- Hook implementation flaws (fail-open conditions, race conditions, input-parsing errors)
+- Managed-settings-schema errors that reduce safety
+- Adversarial-corpus gaps (known CVE or attack class not covered)
+- False-positive rules that break legitimate workflows (not a security bug but important)
+- Documentation claims that are unsupportable by the shipped configuration
+
+Please do NOT:
+
+- Use the public issue tracker for undisclosed bypasses
+- Open a pull request containing a working exploit before coordinated disclosure
+- Test bypasses against third-party systems or production deployments
+
+## Acknowledgment SLA
+
+- **Initial acknowledgment:** within 72 hours of receipt
+- **Triage response with severity assessment:** within 7 days
+- **Fix or documented mitigation:** best-effort, typically within 30 days for high-severity
+- **Coordinated public disclosure:** 90 days from initial report, or sooner by mutual agreement
+
+We do not pay bug bounties on OACB itself. Unbound Security maintains a separate paid disclosure program for the AASB / Gateway commercial product — see https://unboundsecurity.ai/security.
+
+## Severity rubric
+
+| Severity | Definition | Example |
+|----------|------------|---------|
+| **Critical** | Documented bypass of a rule that claims hard-block, demonstrated with public PoC | Denylist bypass for `rm -rf /` via Unicode obfuscation |
+| **High** | Bypass of a grey-area rule, or demonstrated false-assurance claim in README | Rule described as "blocks all curl\|bash" has a trivially constructed exception |
+| **Medium** | Implementation flaw that reduces but does not eliminate protection | Hook fails open on a specific JSON-parse edge case |
+| **Low** | Documentation gap, missing adversarial test case, false-positive rule | README says "blocks terraform destroy" but doesn't mention the edge case with `-chdir` |
+
+## Disclosure policy
+
+OACB follows a coordinated-disclosure model.
+
+- We will not publicly name a reporter without consent
+- We will credit reporters in release notes and `SECURITY-CREDITS.md`
+- We will not threaten legal action for good-faith research conducted in accordance with this policy and the [DOJ Framework for a Vulnerability Disclosure Program](https://www.justice.gov/opa/press-release/file/983996/download)
+
+If you disclose a vulnerability to us and we are slow to respond (> 30 days with no update), you may escalate by:
+
+1. Replying to your initial report with `[ESCALATION]` in the subject
+2. Opening a GitHub Security Advisory (still private)
+3. Contacting the project maintainers listed in MAINTAINERS.md directly
+
+At the 90-day mark, or by mutual agreement, the issue is published with:
+
+- CVE assignment (if applicable; we are not a CNA — we coordinate through MITRE)
+- Severity score (CVSS v3.1 or v4.0)
+- Affected versions and fixed version
+- Credit to the reporter
+- A corresponding adversarial-corpus entry added to the repo
+
+## Known limitations of OACB's own security posture
+
+OACB is best-effort open source. We commit to the SLA above but:
+
+- We do not guarantee fixes within any specific timeframe
+- We cannot guarantee no regressions — test your own deployment
+- We cannot guarantee third-party integrations (unbound-cli, Claude Code itself) will not introduce bypasses outside our control
+- Our adversarial corpus is never exhaustive — new classes of attack land with each major CVE
+
+See [non-claims.md](non-claims.md) for the comprehensive "what OACB does NOT protect against" list.
+
+## Supply chain
+
+- OACB releases are signed with `cosign`
+- SLSA Level 2+ provenance attestations are attached to every release
+- Dependency installation is pinned via lockfiles
+- The release pipeline runs in GitHub Actions with OIDC-based signing; no long-lived signing keys
+
+Verification:
+
+```bash
+# Verify a release
+cosign verify-blob \
+  --certificate-identity-regexp 'https://github.com/websentry-ai/oacb/\\.github/workflows/.*' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --signature oacb-v0.1.0.tar.gz.sig \
+  oacb-v0.1.0.tar.gz
+```
+
+## Integrity of the adversarial corpus
+
+Every denylist rule in `baseline/claude-code/managed-settings.*.json` corresponds to at least one adversarial test case in `adversarial-corpus/`. CI gates:
+
+- No rule is merged without a passing adversarial test
+- Any rule whose adversarial test fails (bypass succeeds) gets the README claim narrowed in the same PR, or reverted
+- False-positive corpus must pass at baseline tier for every merged rule change
+
+## Contact
+
+For non-security questions, open a GitHub issue. For commercial support, contact sales@unboundsecurity.ai. This file is updated with every release.
