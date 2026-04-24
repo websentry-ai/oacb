@@ -3,49 +3,61 @@
 # oacb-enforce.sh — OACB PreToolUse hook for Bash tool
 #
 # Hook contract (per Claude Code docs):
-#   - Exit 0 + JSON: advisory decision via stdout JSON
-#   - Exit 2 + stderr: HARD BLOCK; stderr visible to model
-#   - Any other non-zero: soft error, tool execution CONTINUES (fail-open)
+#   - Exit 0: advisory decision / allow. Tool proceeds.
+#   - Exit 2 + stderr: HARD BLOCK; stderr visible to model. Tool does NOT run.
+#   - Any other non-zero: soft error per Claude Code; tool execution CONTINUES.
 #
 # OACB enforces FAIL-CLOSED for deny rules by using exit 2 + stderr.
-# The script is engineered so that internal errors (jq missing, parse failure,
-# timeout approach) also exit 2, not 1 — preventing fail-open via hook crash.
+# All internal error paths funnel to exit 2 with a stderr reason — jq missing,
+# parse failure, signal, input too large, etc. A crash must not become an allow.
 #
 # Environment:
-#   OACB_TIER              shadow | baseline | strict | paranoid (from managed-settings reference)
-#   OACB_POLICY_CACHE      optional override; defaults to ~/.claude/hooks/.oacb_cache.json
+#   OACB_TIER              shadow | baseline | strict | paranoid (default: baseline)
 #   OACB_AUDIT_LOG         optional; defaults to ~/.claude/hooks/oacb-audit.log
-#
-# Input: JSON on stdin from Claude Code
-#   { "session_id": "...", "tool_name": "Bash", "tool_input": "...", "cwd": "...", ... }
+#   OACB_MAX_INPUT_BYTES   optional size guard (default 131072; input over this fails closed)
 #
 # Exit codes:
-#   0       Allow (explicit advisory allow in JSON)
+#   0       Allow (evaluated rules did not match)
 #   2       Block with stderr reason
-#   other   NEVER INTENTIONALLY — all error paths funnel to exit 2 with a stderr reason
+#   other   NEVER INTENTIONALLY — all error paths funnel to exit 2
 
 set -uo pipefail
 
-# Fail-closed on SIGPIPE and similar
-trap 'emit_block "hook received signal during execution"' INT TERM
-
 OACB_TIER="${OACB_TIER:-baseline}"
 OACB_AUDIT_LOG="${OACB_AUDIT_LOG:-$HOME/.claude/hooks/oacb-audit.log}"
+OACB_MAX_INPUT_BYTES="${OACB_MAX_INPUT_BYTES:-131072}"
 OACB_VERSION="0.1.0"
 
-# --- helpers ---------------------------------------------------------------
+# --- helpers (defined before trap) ----------------------------------------
+
+_audit_line() {
+  # $1=decision $2=rule_id $3=reason
+  # Use jq to construct safe JSON if available; else best-effort printf.
+  if command -v jq >/dev/null 2>&1; then
+    jq -cn \
+      --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+      --arg decision "$1" \
+      --arg tier "$OACB_TIER" \
+      --arg rule "$2" \
+      --arg reason "$3" \
+      --arg ver "$OACB_VERSION" \
+      '{ts:$ts,decision:$decision,tier:$tier,rule:$rule,reason:$reason,oacb_version:$ver}' \
+      >> "$OACB_AUDIT_LOG" 2>/dev/null || true
+  else
+    # Fallback with minimal escaping
+    local esc="${3//\\/\\\\}"
+    esc="${esc//\"/\\\"}"
+    printf '{"ts":"%s","decision":"%s","tier":"%s","rule":"%s","reason":"%s","oacb_version":"%s"}\n' \
+      "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$OACB_TIER" "$2" "$esc" "$OACB_VERSION" \
+      >> "$OACB_AUDIT_LOG" 2>/dev/null || true
+  fi
+}
 
 emit_block() {
   local reason="$1"
   local rule_id="${2:-OACB-UNKNOWN}"
   mkdir -p "$(dirname "$OACB_AUDIT_LOG")" 2>/dev/null || true
-  printf '{"ts":"%s","decision":"deny","tier":"%s","rule":"%s","reason":"%s","oacb_version":"%s"}\n' \
-    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    "$OACB_TIER" \
-    "$rule_id" \
-    "${reason//\"/\\\"}" \
-    "$OACB_VERSION" \
-    >> "$OACB_AUDIT_LOG" 2>/dev/null || true
+  _audit_line "deny" "$rule_id" "$reason"
   printf 'OACB %s [%s]: %s\n' "$OACB_TIER" "$rule_id" "$reason" >&2
   exit 2
 }
@@ -54,14 +66,19 @@ emit_audit_allow() {
   local rule_id="${1:-OACB-ALLOW}"
   local reason="${2:-explicit allow}"
   mkdir -p "$(dirname "$OACB_AUDIT_LOG")" 2>/dev/null || true
-  printf '{"ts":"%s","decision":"allow","tier":"%s","rule":"%s","reason":"%s","oacb_version":"%s"}\n' \
-    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    "$OACB_TIER" \
-    "$rule_id" \
-    "${reason//\"/\\\"}" \
-    "$OACB_VERSION" \
-    >> "$OACB_AUDIT_LOG" 2>/dev/null || true
+  _audit_line "allow" "$rule_id" "$reason"
 }
+
+emit_audit_warn() {
+  local rule_id="$1"
+  local reason="$2"
+  mkdir -p "$(dirname "$OACB_AUDIT_LOG")" 2>/dev/null || true
+  _audit_line "warn" "$rule_id" "$reason"
+}
+
+# Fail-closed on signals (INT/TERM from timeout, HUP, QUIT, ABRT, PIPE).
+# Trap installed AFTER emit_block is defined so handler can call it safely.
+trap 'emit_block "hook received signal during execution" "OACB-SIG-001"' INT TERM HUP QUIT ABRT PIPE
 
 # Verify jq is available — if not, fail CLOSED (not open)
 if ! command -v jq >/dev/null 2>&1; then
@@ -75,13 +92,24 @@ if [[ -z "$input" ]]; then
   emit_block "empty stdin to OACB hook" "OACB-IO-001"
 fi
 
+# Size guard — adversarial huge-input DoS
+input_bytes=${#input}
+if [[ $input_bytes -gt $OACB_MAX_INPUT_BYTES ]]; then
+  emit_block "hook input exceeds $OACB_MAX_INPUT_BYTES bytes ($input_bytes); suspect DoS" "OACB-IO-004"
+fi
+
 tool_name="$(echo "$input" | jq -r '.tool_name // empty' 2>/dev/null)"
 if [[ -z "$tool_name" ]]; then
   emit_block "could not parse tool_name from hook input" "OACB-IO-002"
 fi
 
-# Only handle Bash; defer other tools to their own hooks
+# Only handle Bash; defer other tools to their own hooks.
+# NOTE: paranoid tier uses matcher=".*" — when this hook is invoked for non-Bash
+# tools at paranoid, we fail closed rather than pass through. Other tiers defer.
 if [[ "$tool_name" != "Bash" ]]; then
+  if [[ "$OACB_TIER" == "paranoid" ]]; then
+    emit_block "paranoid tier: tool '$tool_name' not explicitly allowed by hook; deferring to mcp-guard / prompt-guard if wired, else blocking" "OACB-PARANOID-001"
+  fi
   exit 0
 fi
 
@@ -90,172 +118,253 @@ if [[ -z "$cmd" ]]; then
   emit_block "could not parse tool_input.command from hook input" "OACB-IO-003"
 fi
 
+# Strip CR and NUL defensively (via tr to avoid bash-version substitution quirks)
+cmd="$(printf '%s' "$cmd" | tr -d '\r\0' 2>/dev/null || echo "$cmd")"
+
 # --- shadow tier: log only ------------------------------------------------
 
 if [[ "$OACB_TIER" == "shadow" ]]; then
-  # Evaluate but do not block; log the would-be decision.
-  # NOTE: bash does not support combined substring + substitution in one expansion,
-  # so we split the escape step.
   cmd_head="${cmd:0:200}"
   cmd_safe="${cmd_head//\"/\\\"}"
   mkdir -p "$(dirname "$OACB_AUDIT_LOG")" 2>/dev/null || true
-  printf '{"ts":"%s","decision":"allow","tier":"shadow","rule":"OACB-SHADOW","reason":"shadow tier — all decisions logged, none enforced","cmd":"%s","oacb_version":"%s"}\n' \
-    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    "$cmd_safe" \
-    "$OACB_VERSION" \
-    >> "$OACB_AUDIT_LOG" 2>/dev/null || true
+  if command -v jq >/dev/null 2>&1; then
+    jq -cn \
+      --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+      --arg tier "shadow" \
+      --arg cmd "$cmd_head" \
+      --arg ver "$OACB_VERSION" \
+      '{ts:$ts,decision:"allow",tier:$tier,rule:"OACB-SHADOW",reason:"shadow tier — logged, not enforced",cmd:$cmd,oacb_version:$ver}' \
+      >> "$OACB_AUDIT_LOG" 2>/dev/null || true
+  else
+    printf '{"ts":"%s","decision":"allow","tier":"shadow","rule":"OACB-SHADOW","reason":"shadow tier — logged, not enforced","cmd":"%s","oacb_version":"%s"}\n' \
+      "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$cmd_safe" "$OACB_VERSION" \
+      >> "$OACB_AUDIT_LOG" 2>/dev/null || true
+  fi
   exit 0
 fi
 
-# --- rule evaluation ------------------------------------------------------
+# --- normalization --------------------------------------------------------
 
-# Normalize: collapse whitespace, strip leading/trailing space
+# Collapse whitespace, strip leading/trailing space
 normalized="$(echo "$cmd" | tr -s '[:space:]' ' ' | sed 's/^ //;s/ $//')"
 
-# Resolve common obfuscation: \x expansion, ${IFS} removal, $(echo ...) patterns
-# This is BEST EFFORT. Pattern matching is adversarially defeated by construction.
-# We do the obvious normalizations and the threat model (non-claims.md) acknowledges
-# the residual gap. Do not add normalization that creates false positives on
-# legitimate commands — that fails the false-positive corpus.
-
-# Remove ${IFS} and $'\x20' variants used for word-break evasion
+# Expand ${IFS} and $'\x20' used for word-break evasion
 dewhitespaced="$(echo "$normalized" | sed -E 's/\$\{IFS\}/ /g; s/\$'\''\\x20'\''/ /g')"
 
-# Flag backslash-escaped common binaries (\rm, \curl etc) — these are deny-evasion
-if echo "$dewhitespaced" | grep -qE '(^|[^a-zA-Z0-9])\\(rm|curl|wget|ssh|nc|ncat|chmod|chown|sudo|doas)'; then
+# Mask quoted content (single and double quotes) so rule-matching doesn't fire
+# on text inside quotes. Replace quoted-string interiors with placeholders.
+# This prevents:   echo 'rm -rf /tmp/x' > cleanup.sh  from matching OACB-RM-001.
+# Best-effort only — nested/escaped quotes are out of scope; for those we defer
+# to runtime enforcement (see non-claims.md §1).
+unquoted="$(echo "$dewhitespaced" | sed -E "s/'[^']*'/'QUOTED'/g; s/\"[^\"]*\"/\"QUOTED\"/g")"
+
+# --- obfuscation detection ------------------------------------------------
+
+# Backslash-escaped common binaries (\rm, \curl, ...) — deny evasion
+if echo "$unquoted" | grep -qE '(^|[^a-zA-Z0-9])\\(rm|curl|wget|ssh|nc|ncat|chmod|chown|sudo|doas)'; then
   emit_block "backslash-escaped binary detected (deny-evasion pattern)" "OACB-OBF-001"
 fi
 
-# Flag command substitution resolving to dangerous binaries ($(echo rm), `echo rm`)
-# Matches $(echo rm), $(echo curl), ${VAR:-rm}, `echo rm`, etc.
-if echo "$dewhitespaced" | grep -qE '\$\(\s*echo\s+(rm|curl|wget|dd|mkfs|format|shred)\s*\)|`\s*echo\s+(rm|curl|wget|dd|mkfs)\s*`'; then
+# Command substitution resolving to dangerous binaries
+if echo "$unquoted" | grep -qE '\$\(\s*echo\s+(rm|curl|wget|dd|mkfs|format|shred)\s*\)|`\s*echo\s+(rm|curl|wget|dd|mkfs)\s*`'; then
   emit_block "command-substitution resolves to dangerous binary (Flatt-class bypass)" "OACB-OBF-005"
 fi
 
-# Flag variable-indirection resolving to dangerous binaries
-if echo "$dewhitespaced" | grep -qE '\$\{[A-Za-z_][A-Za-z0-9_]*:?-?(rm|curl|wget|dd)\}'; then
+# Variable-indirection resolving to dangerous binaries
+if echo "$unquoted" | grep -qE '\$\{[A-Za-z_][A-Za-z0-9_]*:?-?(rm|curl|wget|dd)\}'; then
   emit_block "variable-substitution default resolves to dangerous binary" "OACB-OBF-006"
 fi
 
-# Flag base64 piped to shell
-if echo "$dewhitespaced" | grep -qE 'base64.*-d.*\|.*sh(ell)?\b'; then
+# base64 piped to shell (RCE / exfil class)
+if echo "$unquoted" | grep -qE 'base64[[:space:]]+(-d|--decode|-D)[^|]*\|[[:space:]]*(sudo[[:space:]]+)?(bash|sh|zsh)\b'; then
   emit_block "base64-decode piped to shell (known exfil / RCE pattern)" "OACB-OBF-002"
 fi
-if echo "$dewhitespaced" | grep -qE 'base64.*--decode.*\|.*(bash|sh|zsh)\b'; then
-  emit_block "base64 --decode piped to shell" "OACB-OBF-002"
-fi
 
-# Flag process-substitution exec of curl/wget
-if echo "$dewhitespaced" | grep -qE '(bash|sh|zsh)\s*<\(\s*(curl|wget)'; then
+# Process-substitution exec of remote content
+if echo "$unquoted" | grep -qE '(bash|sh|zsh)\s*<\(\s*(curl|wget)'; then
   emit_block "process-substitution exec of remote content" "OACB-OBF-003"
 fi
 
-# Flag compound commands with > 10 subcommands (Adversa bypass class)
-sep_count=$(echo "$dewhitespaced" | grep -oE '(&&|\|\||;)' | wc -l | tr -d ' ')
-if [[ "${sep_count:-0}" -gt 10 ]]; then
-  case "$OACB_TIER" in
-    strict|paranoid)
-      emit_block "compound command has $sep_count separators, exceeds OACB compound limit (10)" "OACB-COMPOUND-001"
-      ;;
-    baseline)
-      # WARN at baseline — log as deny-considered but allow
-      mkdir -p "$(dirname "$OACB_AUDIT_LOG")" 2>/dev/null || true
-      printf '{"ts":"%s","decision":"warn","tier":"baseline","rule":"OACB-COMPOUND-001","reason":"compound command separators=%s","oacb_version":"%s"}\n' \
-        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-        "$sep_count" \
-        "$OACB_VERSION" \
-        >> "$OACB_AUDIT_LOG" 2>/dev/null || true
-      ;;
-  esac
-fi
-
-# /proc/self/root traversal (Flatt sandbox-bypass class) — CHECK BEFORE rm-rf
-# so path-traversal-specific rule ID wins over generic rm rule.
-if echo "$dewhitespaced" | grep -q '/proc/self/root/'; then
+# /proc/self/root traversal (Flatt sandbox-bypass class) — BEFORE rm-rf check
+if echo "$unquoted" | grep -q '/proc/self/root/'; then
   emit_block "/proc/self/root path traversal; known sandbox-bypass pattern" "OACB-OBF-004"
 fi
 
-# Destructive rm patterns (T-10)
-if echo "$dewhitespaced" | grep -qE '\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r)\b.*(/|\$HOME|~|\$\{HOME\})'; then
-  emit_block "destructive rm -rf against home/root/system path" "OACB-RM-001"
-fi
-if echo "$dewhitespaced" | grep -qE '\brm\s+-[a-zA-Z]*[rR][a-zA-Z]*[fF].*\*'; then
-  emit_block "destructive rm with glob against wildcard path" "OACB-RM-002"
-fi
+# --- compound command (Adversa CVE class) ---------------------------------
 
-# find -delete against / or ~
-if echo "$dewhitespaced" | grep -qE '\bfind\s+(/|\$HOME|~|\$\{HOME\})\s+.*-delete\b'; then
-  emit_block "find -delete against home/root — destructive equivalent of rm -rf" "OACB-RM-003"
-fi
-
-# Force-push to main/master/release (T-12)
-if echo "$dewhitespaced" | grep -qE '\bgit\s+push\s+(--force|-f|--force-with-lease)\b.*\b(origin|upstream)?\s*(main|master|release/)'; then
-  emit_block "force-push to main/master/release branch" "OACB-GIT-001"
-fi
-
-# terraform destroy / auto-approve (T-11)
-if echo "$dewhitespaced" | grep -qE '\bterraform\s+destroy\b'; then
-  emit_block "terraform destroy is an irreversible operation; prohibited at OACB baseline" "OACB-TF-001"
-fi
-if echo "$dewhitespaced" | grep -qE '\bterraform\s+apply\b.*--auto-approve\b'; then
-  emit_block "terraform apply --auto-approve in autonomous mode; prohibited at OACB baseline" "OACB-TF-002"
-fi
-if echo "$dewhitespaced" | grep -qE '\bterraform\s+state\s+rm\b'; then
-  emit_block "terraform state rm can cause silent state divergence; prohibited" "OACB-TF-003"
-fi
-
-# Database migration destructive patterns (T-13)
-if echo "$dewhitespaced" | grep -qE '\bdrizzle-kit\s+push\b.*--force\b'; then
-  emit_block "drizzle-kit push --force against any database; prohibited" "OACB-DB-001"
-fi
-if echo "$dewhitespaced" | grep -qE '\bprisma\s+migrate\s+reset\b'; then
-  emit_block "prisma migrate reset drops all tables; prohibited at OACB baseline" "OACB-DB-002"
-fi
-if echo "$dewhitespaced" | grep -qE '\balembic\s+downgrade\b'; then
-  emit_block "alembic downgrade; prohibited at OACB baseline without human approval" "OACB-DB-003"
-fi
-
-# curl | bash / wget | sh and variants (T-20)
-if echo "$dewhitespaced" | grep -qE '\b(curl|wget)\s+[^|]*\|\s*(sudo\s+)?(bash|sh|zsh)\b'; then
-  # Allow specific trusted installers via allowlist env
-  case "$dewhitespaced" in
-    *"rustup.rs"*|*"sh.rustup.rs"*|*"bun.sh"*|*"astral.sh/uv"*|*"nodejs.org"*)
-      emit_audit_allow "OACB-NET-001-ALLOW" "trusted installer allowlist match"
+sep_count=$(echo "$unquoted" | grep -oE '(&&|\|\||;)' | wc -l | tr -d ' ')
+if [[ "${sep_count:-0}" -gt 10 ]]; then
+  case "$OACB_TIER" in
+    strict|paranoid)
+      emit_block "compound command has $sep_count separators, exceeds OACB limit (10)" "OACB-COMPOUND-001"
       ;;
-    *)
-      emit_block "remote-to-shell pipe pattern (curl|bash / wget|sh); known RCE vector" "OACB-NET-001"
+    baseline)
+      emit_audit_warn "OACB-COMPOUND-001" "compound command separators=$sep_count"
       ;;
   esac
 fi
 
-# history manipulation (Flatt CVE-2025-66032 variant)
-if echo "$dewhitespaced" | grep -qE '\bhistory\s+-[as]\b'; then
-  emit_block "history -s / history -a manipulation; used in known denylist bypass" "OACB-HIST-001"
+# --- destructive rm (T-10) ------------------------------------------------
+
+# Helper: does a command contain destructive rm flags (any order/form)?
+#   -rf, -fr, -Rf, -fR, -r -f, -f -r, --recursive --force, --force --recursive,
+#   long-option variants.
+_has_destructive_rm_flags() {
+  local s="$1"
+  # Short combined forms: any order, any case of r/R and f/F
+  echo "$s" | grep -qE '\brm\s+(-[a-zA-Z]*[rR][a-zA-Z]*[fF]|-[a-zA-Z]*[fF][a-zA-Z]*[rR])\b' && return 0
+  # Split short flags: rm -r -f, rm -f -r, rm -R -f, etc.
+  echo "$s" | grep -qE '\brm\s+(-[rR]\b[[:space:]]+-[fF]\b|-[fF]\b[[:space:]]+-[rR]\b)' && return 0
+  # Long-option forms
+  echo "$s" | grep -qE '\brm\s+.*(--recursive\b.*--force\b|--force\b.*--recursive\b)' && return 0
+  return 1
+}
+
+# Helper: does the path target an absolute root, home, or system path?
+# Must NOT match relative paths like dist/*, node_modules/*, ./tmp/*.
+# A sensitive target is one of:
+#   - bare `/`               (e.g. `rm -rf /`)
+#   - `/something/...`        but only if the `/` is at start of a rm-argument token
+#   - `~`, `~/`, `$HOME`, `${HOME}`
+#   - explicit system prefixes `/etc/`, `/var/`, `/usr/`, `/bin/`, `/boot/`, `/sbin/`, `/opt/`
+_targets_sensitive_path() {
+  local s="$1"
+  # Tokenize: find arguments after rm (space-delimited) and check each
+  # for absolute-path / home-path markers. We scan the rm-command portion.
+  # Pattern: `rm <flags> <arg1> <arg2> ...` — any arg starting with /, ~, or $HOME matches.
+  # Using [[:space:]]<trigger> requires a space-delimited boundary before the path.
+  echo "$s" | grep -qE '\brm\b[^;|&]*[[:space:]](/|~|\$HOME|\$\{HOME\})([[:space:]]|$|/|\*)' && return 0
+  echo "$s" | grep -qE '\brm\b[^;|&]*[[:space:]](/etc/|/var/|/usr/|/bin/|/sbin/|/boot/|/opt/|/root/)' && return 0
+  return 1
+}
+
+# OACB-RM-001: destructive rm against home/root/system path (any flag form)
+if _has_destructive_rm_flags "$unquoted" && _targets_sensitive_path "$unquoted"; then
+  emit_block "destructive rm against home/root/system path" "OACB-RM-001"
 fi
 
-# eval on untrusted input
-if echo "$dewhitespaced" | grep -qE '^\s*eval\s+'; then
+# OACB-RM-002: destructive rm with glob against home/root wildcard specifically.
+# NOT triggered by `rm -rf dist/*`, `rm -rf build/*`, `rm -rf node_modules/*`, etc.
+if _has_destructive_rm_flags "$unquoted"; then
+  if echo "$unquoted" | grep -qE '\brm\b[^;|&]*[[:space:]](/|~|\$HOME|\$\{HOME\})\*|\brm\b[^;|&]*[[:space:]](/|~|\$HOME|\$\{HOME\})/[^[:space:]]*\*'; then
+    emit_block "destructive rm with glob against home/root wildcard" "OACB-RM-002"
+  fi
+fi
+
+# OACB-RM-003: find -delete against home/root
+if echo "$unquoted" | grep -qE '\bfind\s+(/|\$HOME|~|\$\{HOME\})[[:space:]][^|;&]*-delete\b'; then
+  emit_block "find -delete against home/root" "OACB-RM-003"
+fi
+
+# OACB-RM-004: find -exec rm against home/root
+if echo "$unquoted" | grep -qE '\bfind\s+(/|\$HOME|~|\$\{HOME\})[[:space:]][^|;&]*-exec\s+rm\b'; then
+  emit_block "find -exec rm against home/root" "OACB-RM-004"
+fi
+
+# OACB-RM-005: dd against block devices (disk wipe class)
+if echo "$unquoted" | grep -qE '\bdd\s+.*of=/dev/(sda|sdb|sdc|nvme|disk|hda|hdb|mmcblk)'; then
+  emit_block "dd to block device; disk-wipe class" "OACB-RM-005"
+fi
+
+# OACB-RM-006: mkfs against sensitive devices
+if echo "$unquoted" | grep -qE '\bmkfs(\.[a-z0-9]+)?\s+.*/dev/(sda|nvme|disk|hda|mmcblk)'; then
+  emit_block "mkfs against block device; disk-format class" "OACB-RM-006"
+fi
+
+# --- git force-push to protected branches --------------------------------
+
+if echo "$unquoted" | grep -qE '\bgit\s+push\s+.*(--force|-f|--force-with-lease)\b.*\b(main|master|release/|prod|production)\b'; then
+  emit_block "force-push to main/master/release/prod branch" "OACB-GIT-001"
+fi
+
+# --- terraform destructive -----------------------------------------------
+
+if echo "$unquoted" | grep -qE '\bterraform\s+destroy\b'; then
+  emit_block "terraform destroy is an irreversible operation" "OACB-TF-001"
+fi
+if echo "$unquoted" | grep -qE '\bterraform\s+apply\b.*--auto-approve\b'; then
+  emit_block "terraform apply --auto-approve in autonomous mode" "OACB-TF-002"
+fi
+if echo "$unquoted" | grep -qE '\bterraform\s+state\s+rm\b'; then
+  emit_block "terraform state rm can cause silent state divergence" "OACB-TF-003"
+fi
+
+# --- destructive DB migrations --------------------------------------------
+
+if echo "$unquoted" | grep -qE '\bdrizzle-kit\s+push\b.*--force\b'; then
+  emit_block "drizzle-kit push --force against any database" "OACB-DB-001"
+fi
+if echo "$unquoted" | grep -qE '\bprisma\s+migrate\s+reset\b'; then
+  emit_block "prisma migrate reset drops all tables" "OACB-DB-002"
+fi
+if echo "$unquoted" | grep -qE '\balembic\s+downgrade\b'; then
+  emit_block "alembic downgrade without human approval" "OACB-DB-003"
+fi
+
+# --- remote-to-shell pipe (T-20) ------------------------------------------
+# Parse URL host carefully; only allow if host exactly matches an installer allowlist.
+
+_extract_url_host() {
+  # Extract first https?://host[/...] from the input and print just the host.
+  local s="$1"
+  echo "$s" | grep -oE 'https?://[^[:space:]"'\''|;)<>]+' | head -1 \
+    | sed -E 's|^https?://||; s|/.*$||; s|:[0-9]+$||'
+}
+
+_is_trusted_installer_host() {
+  local host="$1"
+  case "$host" in
+    sh.rustup.rs|rustup.rs|bun.sh|astral.sh|nodejs.org|deb.nodesource.com|get.docker.com|cli.github.com|starship.rs|sh.uv.astral.sh)
+      return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+if echo "$unquoted" | grep -qE '\b(curl|wget|fetch)\s+[^|;&]*\|\s*(sudo\s+)?(bash|sh|zsh|ksh)\b'; then
+  host="$(_extract_url_host "$unquoted")"
+  if [[ -n "$host" ]] && _is_trusted_installer_host "$host"; then
+    emit_audit_allow "OACB-NET-001-ALLOW" "trusted installer host: $host"
+  else
+    emit_block "remote-to-shell pipe; known RCE vector (host=${host:-unknown})" "OACB-NET-001"
+  fi
+fi
+
+# --- netcat / socat / bash tcp ---------------------------------------------
+
+if echo "$unquoted" | grep -qE '\b(nc|ncat|socat|telnet)\s+[^-]'; then
+  # Plain nc/ncat/socat/telnet invocation. Block at baseline+.
+  emit_block "netcat/socat/telnet-family invocation; network egress / reverse-shell class" "OACB-NET-002"
+fi
+if echo "$unquoted" | grep -qE '\b(bash|sh|zsh|ksh)\b[^;|]*/dev/tcp/'; then
+  emit_block "bash /dev/tcp reverse-shell pattern" "OACB-NET-003"
+fi
+
+# --- history / eval / sudo -----------------------------------------------
+
+if echo "$unquoted" | grep -qE '\bhistory\s+-[as]\b'; then
+  emit_block "history -s/-a manipulation; known denylist-bypass primitive" "OACB-HIST-001"
+fi
+
+if echo "$unquoted" | grep -qE '(^|\W)eval\s+'; then
   emit_block "eval is prohibited at OACB baseline" "OACB-EVAL-001"
 fi
 
-# Sandbox self-disable (Flatt / Ona finding) — benign inspection is fine; disabling sandboxing is not.
-# (Detection of sandbox-disable behavior is at the session level, not single-command; out of scope for this hook.)
+# --- credential exfil via env enum ----------------------------------------
+# NOTE: check against $dewhitespaced (pre-quote-mask) because the credential
+# keywords in `grep 'token|key|secret'` are inside a quoted arg.
 
-# Credential exfiltration via env enum — match env|grep with token/key/secret/password/credential
-# regardless of grep flag ordering (`grep -iE`, `grep -E`, `grep -i`, etc.)
 if echo "$dewhitespaced" | grep -qE '\benv\b[[:space:]]*\|[[:space:]]*grep\b'; then
   if echo "$dewhitespaced" | grep -qiE '(token|key|secret|password|credential|api_key|apikey|bearer)'; then
     emit_block "environment enumeration for credentials" "OACB-EXFIL-001"
   fi
 fi
-
-# printenv | grep variant (alternative to env | grep)
 if echo "$dewhitespaced" | grep -qE '\bprintenv\b[[:space:]]*\|[[:space:]]*grep\b'; then
   if echo "$dewhitespaced" | grep -qiE '(token|key|secret|password|credential)'; then
     emit_block "printenv enumeration for credentials" "OACB-EXFIL-001"
   fi
 fi
 
-# Explicit allow sentinel — log and pass
+# --- default: allow --------------------------------------------------------
+
 emit_audit_allow "OACB-DEFAULT-ALLOW" "no deny rule matched"
 exit 0

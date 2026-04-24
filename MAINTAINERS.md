@@ -2,15 +2,17 @@
 
 ## Primary
 
-- **[Name TBD]** — primary maintainer, Unbound Security
-  - GitHub: @[handle]
+- **Vignesh Subbiah** — CTO, Unbound Security
+  - GitHub: [@vsubbiah](https://github.com/vsubbiah) (verify handle before publication)
   - Email: oacb@unboundsecurity.ai
-  - Areas: baseline content, threat model, release process
+  - Areas: framework direction, threat model, release decisions
 
 ## Secondary
 
-- **[Name TBD]** — Unbound Security
-  - Areas: `unbound oacb` CLI subcommand integration, backend policy schema
+- **Sumit Badsara** — Engineer, Unbound Security
+  - Areas: `unbound oacb` CLI subcommand integration, `unbound-cli` extension
+- **Pugazhendhi** — Engineer, Unbound Security
+  - Areas: `oacb/setup.py` + `oacb/mdm/setup.py` in `websentry-ai/setup`, backend integration
 
 ## Security contact
 

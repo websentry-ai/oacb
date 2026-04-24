@@ -66,12 +66,14 @@ sudo unbound oacb apply --tier baseline --mdm
 
 Per-tier effect:
 
-| Tier | `disableAutoMode` | Policy action | Hook mode | MCP allowlist | Intended use |
-|---|---|---|---|---|---|
-| **Shadow** | enabled | AUDIT (log only, no block) | advisory | observe | 2-week observation before rollout |
-| **Baseline** | enabled | WARN + BLOCK on CVE-mapped destructives | hard-block (exit 2) | allowlist | Default enterprise rollout |
-| **Strict** | enabled | BLOCK all; REQUIRE_SLACK_APPROVAL on grey | hard-block + human-gate | strict allowlist | Regulated / pre-production |
-| **Paranoid** | `"disable"` (auto mode off) | BLOCK default; ASK on anything not allowed | managed hooks only | managed-only | FedRAMP / highly sensitive |
+| Tier | Auto mode | `disableAutoMode` JSON value | Policy action | Hook mode | MCP allowlist | Intended use |
+|---|---|---|---|---|---|---|
+| **Shadow** | allowed (classifier-gated) | unset | AUDIT (log only, no block) | advisory | observe | 2-week observation before rollout |
+| **Baseline** | allowed (classifier-gated) | unset | WARN + BLOCK on CVE-mapped destructives | hard-block (exit 2) | allowlist | Default enterprise rollout |
+| **Strict** | allowed (classifier-gated) | unset | BLOCK all; REQUIRE_SLACK_APPROVAL on grey | hard-block + human-gate | strict allowlist | Regulated / pre-production |
+| **Paranoid** | **disabled** | `"disable"` | BLOCK default; ASK on anything not allowed | managed hooks only | managed-only | FedRAMP / highly sensitive |
+
+`bypassPermissions` mode (`--dangerously-skip-permissions`) is forbidden at all tiers via `permissions.disableBypassPermissionsMode: "disable"`.
 
 ## What this baseline covers
 

@@ -64,11 +64,23 @@ if echo "$prompt" | LC_ALL=C grep -qE $'\xe2\x80[\xaa-\xae]|\xe2\x81[\xa6-\xa9]|
   emit_block "prompt contains invisible Unicode (bidi/zero-width/BOM) — known prompt-injection vector" "OACB-PROMPT-001"
 fi
 
-# Tag characters (used in Pillar's demo)
-if echo "$prompt" | python3 -c 'import sys; s=sys.stdin.read(); sys.exit(0 if not any(0xE0000 <= ord(c) <= 0xE007F for c in s) else 1)' 2>/dev/null; then
-  : # no tag chars
-else
+# Tag characters (used in Pillar's demo) U+E0000..U+E007F — UTF-8: F3 A0 80 80..F3 A0 81 BF
+# Prefer a pure-bash byte check; only consult python3 if it is verified usable.
+if echo "$prompt" | LC_ALL=C grep -qE $'\xf3\xa0\x80[\x80-\xbf]|\xf3\xa0\x81[\x80-\xbf]'; then
   emit_block "prompt contains Unicode tag characters (hidden instruction vector)" "OACB-PROMPT-002"
+fi
+# Secondary python3 check only when python3 is verified functional; fail-open on any
+# python3 problem (missing, errored, slow). This prevents fail-closed-on-missing-python3
+# from being a universal prompt blocker.
+if command -v python3 >/dev/null 2>&1 && echo "test" | python3 -c 'pass' >/dev/null 2>&1; then
+  tag_check_exit=0
+  echo "$prompt" | python3 -c 'import sys
+s = sys.stdin.read()
+sys.exit(1 if any(0xE0000 <= ord(c) <= 0xE007F for c in s) else 0)' 2>/dev/null || tag_check_exit=$?
+  if [[ "$tag_check_exit" == "1" ]]; then
+    emit_block "prompt contains Unicode tag characters (python3 double-check)" "OACB-PROMPT-002"
+  fi
+  # Any other non-zero exit = python3 problem; we already did the byte-level check above.
 fi
 
 # 2. Classic prompt-injection markers in pasted content
@@ -86,7 +98,7 @@ case "$OACB_TIER" in
 esac
 
 # 3. Attempts to rewrite OACB / Claude Code config via prompt
-if echo "$prompt" | grep -qiE '(disable (oacb|the )?(security|hook|policy|enforcement))|(turn off|bypass|skip) (oacb|security|hook|policy|enforcement)|--dangerously-skip-permissions|disableAutoMode.*false'; then
+if echo "$prompt" | grep -qiE '(disable[[:space:]]+(oacb[[:space:]]+)?(security|hook|policy|enforcement))|((turn[[:space:]]+off|bypass|skip)[[:space:]]+(oacb|security|hook|policy|enforcement))|--dangerously-skip-permissions|disableAutoMode.*false'; then
   emit_block "prompt attempts to disable OACB enforcement" "OACB-PROMPT-004"
 fi
 

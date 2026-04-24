@@ -9,7 +9,7 @@ This file documents each tier's deltas from the baseline reference, expected wor
 ## Tier 0: Shadow
 
 **Action:** AUDIT only. Hook evaluates rules and logs decisions but never blocks.
-**disableAutoMode:** enabled (auto mode remains available)
+**Auto mode:** allowed (classifier-gated). `disableAutoMode` JSON field is unset.
 **Hook exit code:** always 0 (advisory only)
 **MCP allowlist:** observation mode — flags unapproved MCP servers in audit log but does not block install
 
@@ -63,7 +63,7 @@ The hook script checks `OACB_TIER=shadow` and emits audit entries instead of exi
 ## Tier 1: Baseline
 
 **Action:** WARN on grey, BLOCK on CVE-mapped destructives. **Recommended default enterprise tier.**
-**disableAutoMode:** enabled
+**Auto mode:** allowed (classifier-gated). `disableAutoMode` JSON field is unset.
 **Hook exit code:** 2 (hard block) on deny matches; 0 on warn/allow
 **MCP allowlist:** user-level allowlist enforced
 
@@ -106,7 +106,7 @@ The hook script checks `OACB_TIER=shadow` and emits audit entries instead of exi
 ## Tier 2: Strict
 
 **Action:** BLOCK all deny patterns; REQUIRE_SLACK_APPROVAL on grey. Intended for pre-production, regulated teams, or teams handling customer data.
-**disableAutoMode:** enabled
+**Auto mode:** allowed (classifier-gated) + `allowManagedPermissionRulesOnly: true` means user/project rules cannot override managed denies. `disableAutoMode` JSON field is unset.
 **Hook exit code:** 2 on deny; out-of-band Slack approval flow on ask
 **MCP allowlist:** strict allowlist (managed-settings enforced)
 
@@ -159,7 +159,7 @@ Sets:
 ## Tier 3: Paranoid
 
 **Action:** `permissions.disableAutoMode: "disable"` — auto mode is turned off entirely. BLOCK all defaults. ASK on anything not explicitly allowed.
-**disableAutoMode:** "disable" (autonomous mode forbidden)
+**Auto mode:** **disabled**. `disableAutoMode` JSON value is `"disable"`. Agent operates as review-only.
 **Hook exit code:** 2 on deny; Slack approval on ask
 **MCP allowlist:** managed-only, very small set
 

@@ -13,9 +13,6 @@
     "defaultMode": "acceptEdits",
 
     "deny": [
-      "Bash(curl *)",
-      "Bash(wget *)",
-
       "Bash(rm -rf /*)",
       "Bash(rm -rf ~*)",
       "Bash(rm -rf ${HOME}*)",

@@ -149,12 +149,34 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": ".*",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
             "command": "/usr/local/share/oacb/hooks/oacb-enforce.sh",
             "timeout": 5000,
+            "env": { "OACB_TIER": "paranoid" }
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-mcp-guard.sh",
+            "timeout": 3000,
+            "env": { "OACB_TIER": "paranoid" }
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-enforce.sh",
+            "timeout": 3000,
             "env": { "OACB_TIER": "paranoid" }
           }
         ]
