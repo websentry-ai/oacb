@@ -2,23 +2,39 @@
 
 Target order, not calendar. Dates are omitted intentionally (avoiding the reputational time-bomb of missed public commitments).
 
-## v0.1.0 — Claude Code Auto Mode Profile
+## v0.1.0-rc.X — Release candidate (current)
 
 - [x] Name locked (OACB — Open Autonomous Coding-agent Baseline)
 - [x] Blocker decisions (license Apache 2.0; backend schema deferred; shadow default; best-effort OSS + 72h SLA)
-- [ ] README, SECURITY.md, MAINTAINERS.md, PROVENANCE.md, COMPATIBILITY.md, non-claims.md
-- [ ] Managed-settings tiers: shadow, baseline, strict, paranoid
-- [ ] PreToolUse hook with fail-closed semantics (oacb-enforce.sh)
-- [ ] UserPromptSubmit hook for prompt-injection flagging (oacb-prompt-guard.sh)
-- [ ] ConfigChange hook for managed-settings audit (oacb-config-audit.sh)
-- [ ] MCP PreToolUse hook (oacb-mcp-guard.sh)
-- [ ] Adversarial corpus: 8 Flatt bypass variants, Cymulate InversePrompt, Adversa compound, Embrace The Red DNS, Invariant MCP, Pillar rules-file-backdoor, compound-command, Replit / DataTalks destructive patterns
-- [ ] False-positive corpus: 200+ legitimate dev commands
-- [ ] Conformance test harness (conformance-runner.sh + expected.json)
+- [x] README, SECURITY.md, MAINTAINERS.md, PROVENANCE.md, COMPATIBILITY.md, non-claims.md
+- [x] Managed-settings tiers: shadow, baseline, strict, paranoid
+- [x] PreToolUse hook with fail-closed semantics (oacb-enforce.sh)
+- [x] UserPromptSubmit hook for prompt-injection flagging (oacb-prompt-guard.sh)
+- [x] ConfigChange hook for managed-settings audit (oacb-config-audit.sh)
+- [x] MCP PreToolUse hook (oacb-mcp-guard.sh)
+- [x] Adversarial corpus: 4 CVE-grounded cases + runner with 66 conformance tests
+- [x] False-positive corpus: 250+ legitimate dev commands
+- [x] Conformance test harness (conformance-runner.sh + expected.json)
+- [x] JSON Schema for managed-settings format
+- [x] CLAUDE.md.example showing agent-behavioral rules
+
+## v0.1.0 GA — must ship before dropping `-rc` suffix
+
+Per principal-architect review of v0.1.0-rc.0:
+
+- [x] Fix OACB-NET-001 compound-command bypass (curl|sh clause-per-clause eval)
+- [x] Ship `schemas/managed-settings-0.1.json` and resolve `$schema` URLs
+- [ ] Add `mcp-guard` + `config-audit` dispatch to conformance-runner with 3+ cases each
+- [ ] CI workflow enforcing architectural invariants:
+  - Every rule ID in hooks appears in `expected.json`
+  - Every `managed-settings.*.json` validates against the schema
+  - Every tier's `_oacb.tier` field matches filename
+  - Paranoid tier has `disableAutoMode: "disable"`; others do not
+  - Every `source:` in `expected.json` points to a real file
+  - Every hook has at least one test case per declared tier
+- [ ] Walk all README / COMPATIBILITY.md claims; every claim has a CI artifact or is softened
 - [ ] `unbound oacb` subcommand merged to unbound-cli
 - [ ] cosign-signed releases + SLSA Level 2+ provenance
-- [ ] JSON Schema for settings format
-- [ ] CLAUDE.md.example showing agent-behavioral rules
 
 ## v0.1.1 — Control mapping
 
@@ -30,6 +46,8 @@ Target order, not calendar. Dates are omitted intentionally (avoiding the reputa
 - [ ] EU AI Act article coverage note (Articles 3, 4, 14, 15, 26, 50)
 - [ ] Vanta / Drata automated-evidence integration doc
 - [ ] "How to cite OACB in your RFP responses" guide
+- [ ] Migrate `expected.json` to per-case TOML files with a build step (architect observation #2 — scales past ~150 cases)
+- [ ] Weekly CI job that diffs Anthropic's published managed-settings schema against OACB's pinned version (architect observation #5)
 
 ## v0.2 — Cursor + bypassPermissions profile
 

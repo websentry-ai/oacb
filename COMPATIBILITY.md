@@ -96,6 +96,6 @@ Enterprise deployment of OACB strict or paranoid requires at minimum Team plan (
 
 ## Anthropic release cadence tracking
 
-OACB's release pipeline includes a weekly CI job that diffs the published `managed-settings.json` schema against the version OACB pins. Schema changes trigger an issue in this repo and a PATCH release within 7 days (or a MINOR release if the change is breaking).
+OACB maintainers track Anthropic's Claude Code release notes and managed-settings schema changes manually; a breaking change upstream triggers a PATCH or MINOR release depending on impact. A CI job that automates this diff against the pinned schema version is tracked in `ROADMAP.md` (v0.1.1 target) but not yet implemented as of v0.1.0-rc.
 
 Subscribe to [OACB release notifications](https://github.com/websentry-ai/oacb/releases) to stay current.

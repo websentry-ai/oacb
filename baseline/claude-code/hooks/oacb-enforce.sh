@@ -320,13 +320,35 @@ _is_trusted_installer_host() {
   esac
 }
 
-if echo "$unquoted" | grep -qE '\b(curl|wget|fetch)\s+[^|;&]*\|\s*(sudo\s+)?(bash|sh|zsh|ksh)\b'; then
-  host="$(_extract_url_host "$unquoted")"
-  if [[ -n "$host" ]] && _is_trusted_installer_host "$host"; then
-    emit_audit_allow "OACB-NET-001-ALLOW" "trusted installer host: $host"
-  else
-    emit_block "remote-to-shell pipe; known RCE vector (host=${host:-unknown})" "OACB-NET-001"
-  fi
+# Split command into clauses on `;`, `&&`, `||`, `\n` and evaluate each independently.
+# Prevents the "first clause is trusted installer, second clause is attacker payload"
+# bypass where the whole command was allowed on the first-URL check alone.
+_check_curl_pipe_per_clause() {
+  local full="$1"
+  # Replace all separators with a single NUL, then iterate.
+  local OLD_IFS="$IFS"
+  IFS=$'\n'
+  # shellcheck disable=SC2046
+  local clauses
+  clauses=$(printf '%s\n' "$full" | sed -E 's/(&&|\|\||;)/\n/g')
+  while IFS= read -r clause; do
+    [[ -z "$clause" ]] && continue
+    if echo "$clause" | grep -qE '\b(curl|wget|fetch)\b[^|]*\|\s*(sudo\s+)?(bash|sh|zsh|ksh)\b'; then
+      local host
+      host="$(_extract_url_host "$clause")"
+      if [[ -z "$host" ]] || ! _is_trusted_installer_host "$host"; then
+        IFS="$OLD_IFS"
+        emit_block "remote-to-shell pipe; known RCE vector (host=${host:-unknown}) in clause: $(echo "$clause" | head -c 120)" "OACB-NET-001"
+      fi
+    fi
+  done <<< "$clauses"
+  IFS="$OLD_IFS"
+}
+
+if echo "$unquoted" | grep -qE '\b(curl|wget|fetch)\b[^|]*\|\s*(sudo\s+)?(bash|sh|zsh|ksh)\b'; then
+  _check_curl_pipe_per_clause "$unquoted"
+  # If we reach here, every curl|sh clause in the command had a trusted installer host.
+  emit_audit_allow "OACB-NET-001-ALLOW" "all curl|sh clauses map to trusted installer hosts"
 fi
 
 # --- netcat / socat / bash tcp ---------------------------------------------

@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/websentry-ai/oacb/main/schemas/managed-settings-0.1.json",
+  "title": "OACB managed-settings.json (v0.1)",
+  "description": "Structural invariants for OACB-authored Claude Code managed-settings JSON. Validates the OACB-specific fields and recognized shapes of a subset of Claude Code's managed-settings schema.",
+  "type": "object",
+  "required": ["_oacb", "permissions", "hooks"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri"
+    },
+    "_oacb": {
+      "type": "object",
+      "description": "OACB provenance block — identifies this JSON as an OACB-shipped baseline.",
+      "required": ["name", "version", "tier", "repo", "supportedClaudeCodeRange"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^OACB "
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-z0-9]+(\\.[0-9]+)?)?$"
+        },
+        "tier": {
+          "type": "string",
+          "enum": ["shadow", "baseline", "strict", "paranoid"]
+        },
+        "repo": {
+          "type": "string",
+          "format": "uri"
+        },
+        "supportedClaudeCodeRange": {
+          "type": "string",
+          "description": "SemVer range string, e.g. '>=2.1.83 <3.0.0'"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "permissions": {
+      "type": "object",
+      "properties": {
+        "defaultMode": {
+          "type": "string",
+          "enum": ["default", "acceptEdits", "plan", "auto", "dontAsk", "bypassPermissions"]
+        },
+        "deny": { "type": "array", "items": { "type": "string" } },
+        "ask": { "type": "array", "items": { "type": "string" } },
+        "allow": { "type": "array", "items": { "type": "string" } },
+        "allowManagedPermissionRulesOnly": { "type": "boolean" },
+        "allowManagedHooksOnly": { "type": "boolean" },
+        "allowManagedMcpServersOnly": { "type": "boolean" },
+        "disableAutoMode": { "enum": ["disable"] },
+        "disableBypassPermissionsMode": { "enum": ["disable"] },
+        "additionalDirectories": { "type": "array", "items": { "type": "string" } },
+        "mcp": { "type": "object" }
+      },
+      "additionalProperties": true
+    },
+    "autoMode": {
+      "type": "object",
+      "properties": {
+        "environment": { "type": "array", "items": { "type": "string" } },
+        "soft_deny": { "type": "array", "items": { "type": "string" } },
+        "allow": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
+    "hooks": {
+      "type": "object",
+      "properties": {
+        "PreToolUse": { "$ref": "#/$defs/HookArray" },
+        "PostToolUse": { "$ref": "#/$defs/HookArray" },
+        "UserPromptSubmit": { "$ref": "#/$defs/HookArray" },
+        "SessionStart": { "$ref": "#/$defs/HookArray" },
+        "SessionEnd": { "$ref": "#/$defs/HookArray" },
+        "Stop": { "$ref": "#/$defs/HookArray" },
+        "SubagentStop": { "$ref": "#/$defs/HookArray" },
+        "ConfigChange": { "$ref": "#/$defs/HookArray" },
+        "PostToolBatch": { "$ref": "#/$defs/HookArray" },
+        "FileChanged": { "$ref": "#/$defs/HookArray" },
+        "CwdChanged": { "$ref": "#/$defs/HookArray" },
+        "InstructionsLoaded": { "$ref": "#/$defs/HookArray" },
+        "PermissionRequest": { "$ref": "#/$defs/HookArray" },
+        "Notification": { "$ref": "#/$defs/HookArray" },
+        "PreCompact": { "$ref": "#/$defs/HookArray" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "HookArray": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "matcher": { "type": "string" },
+          "hooks": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/HookCommand" },
+            "minItems": 1
+          }
+        },
+        "required": ["hooks"],
+        "additionalProperties": false
+      }
+    },
+    "HookCommand": {
+      "type": "object",
+      "required": ["type", "command"],
+      "properties": {
+        "type": { "enum": ["command"] },
+        "command": { "type": "string", "minLength": 1 },
+        "if": { "type": "string" },
+        "timeout": { "type": "integer", "minimum": 100, "maximum": 600000 },
+        "async": { "type": "boolean" },
+        "shell": { "type": "string" },
+        "env": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
