@@ -12,7 +12,7 @@ Target order, not calendar. Dates are omitted intentionally (avoiding the reputa
 - [x] UserPromptSubmit hook for prompt-injection flagging (oacb-prompt-guard.sh)
 - [x] ConfigChange hook for managed-settings audit (oacb-config-audit.sh)
 - [x] MCP PreToolUse hook (oacb-mcp-guard.sh)
-- [x] Adversarial corpus: 4 CVE-grounded cases + runner with 66 conformance tests
+- [x] Adversarial corpus: 12 documented cases + runner with 65 conformance tests
 - [x] False-positive corpus: 250+ legitimate dev commands
 - [x] Conformance test harness (conformance-runner.sh + expected.json)
 - [x] JSON Schema for managed-settings format
@@ -24,8 +24,8 @@ Per principal-architect review of v0.1.0-rc.0:
 
 - [x] Fix OACB-NET-001 compound-command bypass (curl|sh clause-per-clause eval)
 - [x] Ship `schemas/managed-settings-0.1.json` and resolve `$schema` URLs
-- [ ] Add `mcp-guard` + `config-audit` dispatch to conformance-runner with 3+ cases each
-- [ ] CI workflow enforcing architectural invariants:
+- [x] Add `mcp-guard` + `config-audit` dispatch to conformance-runner with 3+ cases each
+- [x] CI workflow enforcing architectural invariants:
   - Every rule ID in hooks appears in `expected.json`
   - Every `managed-settings.*.json` validates against the schema
   - Every tier's `_oacb.tier` field matches filename
