@@ -4,6 +4,26 @@ Every rule, adversarial test, threat-model entry, and documented CVE in OACB has
 
 ---
 
+## Release signing and provenance
+
+Every release from v0.1.0 is signed and attested by the CI pipeline:
+
+| Artifact | Mechanism | Verification |
+|----------|-----------|--------------|
+| `oacb-<version>.tar.gz` | cosign keyless (GitHub OIDC) | `cosign verify-blob` — see SECURITY.md |
+| `oacb-<version>.tar.gz.sig` + `.crt` | Sigstore transparency log | Included in release assets |
+| SLSA L2 provenance | `actions/attest-build-provenance@v2` | `gh attestation verify` — see SECURITY.md |
+
+The signing identity is:
+```
+certificate-identity-regexp: https://github.com/websentry-ai/oacb/.github/workflows/release.yml@refs/tags/.*
+certificate-oidc-issuer:      https://token.actions.githubusercontent.com
+```
+
+No private keys are used. All signatures are verifiable without contacting Unbound Security.
+
+---
+
 ## Content licensing
 
 - **All original OACB content** (rules, settings JSON, hook scripts, threat-model table, README, documentation): **Apache 2.0** — authored by Unbound Security, copyright 2026.

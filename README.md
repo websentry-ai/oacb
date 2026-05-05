@@ -107,7 +107,7 @@ See [threat-model.md](threat-model.md) for the full STRIDE × ASI × ATLAS × CV
 | Attack | CVE / incident | OACB response |
 |---|---|---|
 | Hook RCE via hostile `.claude/settings.json` in cloned repo | CVE-2025-59536 | `allowManagedHooksOnly: true` enforced at managed-settings tier |
-| 8-way Bash denylist bypass incl. sandbox self-disable | CVE-2025-66032 | Adversarial corpus includes all 8 variants; strict-tier rules |
+| 8-way Bash denylist bypass incl. sandbox self-disable | CVE-2025-66032 | Adversarial corpus covers 6 of 8 variants; abbreviated git args (variant 4) and quoting concatenation (variant 8) are documented residuals — see non-claims.md |
 | InversePrompt path + echo command injection | CVE-2025-54794/5 | Adversarial corpus + path-guard hook |
 | DNS exfiltration | CVE-2025-55284 | Sandbox network rules + adversarial corpus |
 | Compound command bypass (>50 subcommands) | Adversa April 2026 | Rule: BLOCK compound command with > N subcommands |
@@ -155,12 +155,11 @@ oacb/
 │       ├── managed-settings.strict.json
 │       ├── managed-settings.paranoid.json
 │       ├── CLAUDE.md.example
-│       ├── hooks/
-│       │   ├── oacb-enforce.sh         # PreToolUse, fail-closed
-│       │   └── oacb-prompt-guard.sh    # UserPromptSubmit
-│       └── rules/
-│           ├── terminal-command/*.json  # individual rule definitions
-│           └── mcp-tool/*.json
+│       └── hooks/
+│           ├── oacb-enforce.sh         # PreToolUse (Bash), fail-closed
+│           ├── oacb-prompt-guard.sh    # UserPromptSubmit
+│           ├── oacb-mcp-guard.sh       # PreToolUse (MCP tools)
+│           └── oacb-config-audit.sh    # ConfigChange, audit-only
 ├── adversarial-corpus/                  # CVE-grounded bypass cases
 ├── false-positive-corpus/               # must-not-block dev workflows
 └── conformance-tests/                   # CI harness

@@ -32,9 +32,9 @@ Per principal-architect review of v0.1.0-rc.0:
   - Paranoid tier has `disableAutoMode: "disable"`; others do not
   - Every `source:` in `expected.json` points to a real file
   - Every hook has at least one test case per declared tier
-- [ ] Walk all README / COMPATIBILITY.md claims; every claim has a CI artifact or is softened
-- [ ] `unbound oacb` subcommand merged to unbound-cli
-- [ ] cosign-signed releases + SLSA Level 2+ provenance
+- [x] Walk all README / COMPATIBILITY.md claims; every claim has a CI artifact or is softened
+- [x] `unbound oacb` subcommand implemented in unbound-cli (`src/commands/oacb.js`)
+- [x] cosign-signed releases + SLSA Level 2+ provenance (`.github/workflows/release.yml`)
 
 ## v0.1.1 — Control mapping
 
