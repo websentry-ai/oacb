@@ -35,7 +35,7 @@ jobs:
             COMPATIBILITY.md \
             non-claims.md \
             threat-model.md \
-            CLAUDE.md.example \
+            baseline/claude-code/CLAUDE.md.example \
             LICENSE
           sha256sum "oacb-${VERSION}.tar.gz" | tee checksums.txt
 
