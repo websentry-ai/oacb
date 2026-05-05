@@ -13,13 +13,14 @@ jobs:
   release:
     name: Build, sign, and publish
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Build release tarball
         run: |
-          VERSION="${GITHUB_REF_NAME}"
+          VERSION="${GITHUB_REF#refs/tags/}"
           tar -czf "oacb-${VERSION}.tar.gz" \
             --transform "s|^|oacb-${VERSION}/|" \
             baseline/ \
@@ -43,7 +44,7 @@ jobs:
 
       - name: Sign tarball (keyless OIDC)
         run: |
-          VERSION="${GITHUB_REF_NAME}"
+          VERSION="${GITHUB_REF#refs/tags/}"
           cosign sign-blob --yes \
             --output-signature "oacb-${VERSION}.tar.gz.sig" \
             --output-certificate "oacb-${VERSION}.tar.gz.crt" \
@@ -58,7 +59,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${GITHUB_REF_NAME}"
+          VERSION="${GITHUB_REF#refs/tags/}"
           gh release create "${VERSION}" \
             --title "OACB ${VERSION}" \
             --generate-notes \
