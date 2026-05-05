@@ -2,10 +2,7 @@ name: Release
 
 on:
   push:
-    branches:
-      - 'dev*'
-    tags:
-      - 'v*'
+    branches: [dev/conformance]
 
 permissions:
   contents: write      # create release, upload assets
