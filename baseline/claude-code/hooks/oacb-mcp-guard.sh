@@ -29,6 +29,13 @@ emit_block() {
   printf '{"ts":"%s","decision":"deny","tier":"%s","rule":"%s","reason":"%s","hook":"PreToolUse-MCP","oacb_version":"%s"}\n' \
     "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$OACB_TIER" "$rule_id" "${reason//\"/\\\"}" "$OACB_VERSION" \
     >> "$OACB_AUDIT_LOG" 2>/dev/null || true
+  if command -v jq >/dev/null 2>&1; then
+    jq -cn --arg rule "$rule_id" --arg r "$reason" --arg tier "$OACB_TIER" \
+      '{"reason": ("OACB [\($rule)]: \($r) — blocked by OACB \($tier) tier. See https://github.com/websentry-ai/oacb for the full rule set.")}'
+  else
+    local esc="${reason//\"/\\\"}"
+    printf '{"reason":"OACB [%s]: %s — blocked by OACB %s tier."}\n' "$rule_id" "$esc" "$OACB_TIER"
+  fi
   printf 'OACB %s [%s]: %s\n' "$OACB_TIER" "$rule_id" "$reason" >&2
   exit 2
 }

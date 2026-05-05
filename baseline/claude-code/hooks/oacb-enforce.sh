@@ -58,6 +58,15 @@ emit_block() {
   local rule_id="${2:-OACB-UNKNOWN}"
   mkdir -p "$(dirname "$OACB_AUDIT_LOG")" 2>/dev/null || true
   _audit_line "deny" "$rule_id" "$reason"
+  # stdout JSON: Claude Code surfaces the `reason` field to the model so it can
+  # explain the block to the user rather than showing a generic hook-failed message.
+  if command -v jq >/dev/null 2>&1; then
+    jq -cn --arg rule "$rule_id" --arg r "$reason" --arg tier "$OACB_TIER" \
+      '{"reason": ("OACB [\($rule)]: \($r) — blocked by OACB \($tier) tier. See https://github.com/websentry-ai/oacb for the full rule set.")}'
+  else
+    local esc="${reason//\"/\\\"}"
+    printf '{"reason":"OACB [%s]: %s — blocked by OACB %s tier."}\n' "$rule_id" "$esc" "$OACB_TIER"
+  fi
   printf 'OACB %s [%s]: %s\n' "$OACB_TIER" "$rule_id" "$reason" >&2
   exit 2
 }
