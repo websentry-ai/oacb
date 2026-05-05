@@ -20,6 +20,8 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 HOOK_ENFORCE="${HOOK_ENFORCE:-$REPO_ROOT/baseline/claude-code/hooks/oacb-enforce.sh}"
 HOOK_PROMPT_GUARD="${HOOK_PROMPT_GUARD:-$REPO_ROOT/baseline/claude-code/hooks/oacb-prompt-guard.sh}"
+HOOK_MCP_GUARD="${HOOK_MCP_GUARD:-$REPO_ROOT/baseline/claude-code/hooks/oacb-mcp-guard.sh}"
+HOOK_CONFIG_AUDIT="${HOOK_CONFIG_AUDIT:-$REPO_ROOT/baseline/claude-code/hooks/oacb-config-audit.sh}"
 EXPECTED_FILE="${EXPECTED_FILE:-$SCRIPT_DIR/expected.json}"
 
 TIERS=("baseline" "strict" "paranoid")
@@ -41,9 +43,11 @@ done
 if ! command -v jq >/dev/null 2>&1; then
   echo "ERROR: jq required" >&2; exit 2
 fi
-if [[ ! -x "$HOOK_ENFORCE" ]]; then
-  echo "ERROR: hook script not executable: $HOOK_ENFORCE" >&2; exit 2
-fi
+for _hook in "$HOOK_ENFORCE" "$HOOK_PROMPT_GUARD" "$HOOK_MCP_GUARD" "$HOOK_CONFIG_AUDIT"; do
+  if [[ ! -x "$_hook" ]]; then
+    echo "ERROR: hook script not executable: $_hook" >&2; exit 2
+  fi
+done
 if [[ ! -f "$EXPECTED_FILE" ]]; then
   echo "ERROR: expected.json not found: $EXPECTED_FILE" >&2; exit 2
 fi
@@ -107,8 +111,10 @@ while IFS= read -r case_json; do
 
   hook_name="$(echo "$case_json" | jq -r '.hook // "enforce"')"
   case "$hook_name" in
-    enforce) hook_path="$HOOK_ENFORCE" ;;
+    enforce)      hook_path="$HOOK_ENFORCE" ;;
     prompt-guard) hook_path="$HOOK_PROMPT_GUARD" ;;
+    mcp-guard)    hook_path="$HOOK_MCP_GUARD" ;;
+    config-audit) hook_path="$HOOK_CONFIG_AUDIT" ;;
     *) echo "Unknown hook: $hook_name" >&2; continue ;;
   esac
 

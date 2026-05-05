@@ -96,6 +96,6 @@ Enterprise deployment of OACB strict or paranoid requires at minimum Team plan (
 
 ## Anthropic release cadence tracking
 
-OACB maintainers track Anthropic's Claude Code release notes and managed-settings schema changes manually; a breaking change upstream triggers a PATCH or MINOR release depending on impact. A CI job that automates this diff against the pinned schema version is tracked in `ROADMAP.md` (v0.1.1 target) but not yet implemented as of v0.1.0-rc.
+OACB maintainers track Anthropic's Claude Code release notes and managed-settings schema changes manually; a breaking change upstream triggers a PATCH or MINOR release depending on impact. Conformance tests and architectural invariants (including schema validation) run on every PR via `.github/workflows/conformance.yml`. A separate CI job that automates drift detection against Anthropic's published managed-settings schema is tracked in `ROADMAP.md` (v0.1.1 target).
 
 Subscribe to [OACB release notifications](https://github.com/websentry-ai/oacb/releases) to stay current.

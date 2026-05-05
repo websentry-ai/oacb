@@ -1,0 +1,127 @@
+name: Conformance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  conformance:
+    name: Conformance suite (all tiers)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Make hook scripts executable
+        run: chmod +x baseline/claude-code/hooks/*.sh
+
+      - name: Run conformance suite
+        run: bash conformance-tests/conformance-runner.sh
+
+  invariants:
+    name: Architectural invariants
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get install -y jq
+          pip install check-jsonschema==0.31.3
+
+      - name: "Inv-1: every blocking rule ID in hooks has a test case"
+        run: |
+          # Infrastructure and dead-code IDs excluded from coverage requirement.
+          # OACB-RM-002: dead code — RM-001 always fires first (documented in non-claims.md).
+          # OACB-MCP-004: requires allowlist fixture setup; tested manually.
+          EXCLUDED="OACB-ENV-001|OACB-IO-001|OACB-IO-002|OACB-IO-003|OACB-IO-004|OACB-SIG-001|OACB-RM-002|OACB-MCP-004"
+
+          rule_ids=$(grep -h 'emit_block' baseline/claude-code/hooks/*.sh \
+            | grep -v 'emit_block()' \
+            | grep -oE '"OACB-[A-Z]+-[0-9]+"' \
+            | tr -d '"' \
+            | sort -u)
+
+          failed=0
+          while IFS= read -r id; do
+            [[ -z "$id" ]] && continue
+            if echo "$id" | grep -qE "^($EXCLUDED)$"; then continue; fi
+            if ! jq -e --arg id "$id" '.cases[].tiers // {} | to_entries[] | .value.stderr_contains // "" | select(. == $id)' \
+                conformance-tests/expected.json > /dev/null 2>&1; then
+              echo "FAIL: rule $id appears in hooks (emit_block) but has no stderr_contains match in expected.json"
+              failed=1
+            fi
+          done <<< "$rule_ids"
+          exit $failed
+
+      - name: "Inv-2: managed-settings files validate against schema"
+        run: |
+          for f in baseline/claude-code/managed-settings.*.json; do
+            echo "Validating: $f"
+            check-jsonschema --schemafile schemas/managed-settings-0.1.json "$f"
+          done
+
+      - name: "Inv-3: _oacb.tier field matches filename"
+        run: |
+          failed=0
+          for f in baseline/claude-code/managed-settings.*.json; do
+            filename_tier=$(basename "$f" .json | sed 's/managed-settings\.//')
+            actual_tier=$(jq -r '._oacb.tier' "$f")
+            if [[ "$filename_tier" != "$actual_tier" ]]; then
+              echo "FAIL: $f — filename tier='$filename_tier' but ._oacb.tier='$actual_tier'"
+              failed=1
+            fi
+          done
+          exit $failed
+
+      - name: "Inv-4: paranoid has disableAutoMode:disable; other tiers do not"
+        run: |
+          failed=0
+          paranoid_dam=$(jq -r '.permissions.disableAutoMode // "MISSING"' \
+            baseline/claude-code/managed-settings.paranoid.json)
+          if [[ "$paranoid_dam" != "disable" ]]; then
+            echo "FAIL: paranoid tier .permissions.disableAutoMode='$paranoid_dam', expected 'disable'"
+            failed=1
+          fi
+          for tier in shadow baseline strict; do
+            dam=$(jq -r '.permissions.disableAutoMode // "none"' \
+              "baseline/claude-code/managed-settings.$tier.json")
+            if [[ "$dam" == "disable" ]]; then
+              echo "FAIL: $tier tier has disableAutoMode:disable (only paranoid should have this)"
+              failed=1
+            fi
+          done
+          exit $failed
+
+      - name: "Inv-5: every source: in expected.json points to a real file"
+        run: |
+          failed=0
+          while IFS= read -r src; do
+            [[ -z "$src" ]] && continue
+            full_path="adversarial-corpus/$src"
+            if [[ ! -f "$full_path" ]]; then
+              echo "FAIL: source '$src' in expected.json not found at $full_path"
+              failed=1
+            fi
+          done < <(jq -r '.cases[].source // empty' conformance-tests/expected.json)
+          exit $failed
+
+      - name: "Inv-6: each hook has at least one test case per active tier"
+        run: |
+          failed=0
+          for hook_name in enforce prompt-guard mcp-guard config-audit; do
+            for tier in baseline strict paranoid; do
+              count=$(jq --arg h "$hook_name" --arg t "$tier" \
+                '[.cases[] | select((.hook // "enforce") == $h) | select(.tiers[$t] != null)] | length' \
+                conformance-tests/expected.json)
+              if [[ "$count" -eq 0 ]]; then
+                echo "FAIL: hook=$hook_name tier=$tier has zero test cases in expected.json"
+                failed=1
+              fi
+            done
+          done
+          exit $failed

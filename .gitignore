@@ -13,3 +13,6 @@ oacb-audit.log
 # IDE
 .vscode/
 .idea/
+
+# development docs
+AUDIT.md
