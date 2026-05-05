@@ -12,7 +12,7 @@ Target order, not calendar. Dates are omitted intentionally (avoiding the reputa
 - [x] UserPromptSubmit hook for prompt-injection flagging (oacb-prompt-guard.sh)
 - [x] ConfigChange hook for managed-settings audit (oacb-config-audit.sh)
 - [x] MCP PreToolUse hook (oacb-mcp-guard.sh)
-- [x] Adversarial corpus: 12 documented cases + runner with 65 conformance tests
+- [x] Adversarial corpus: 25 documented cases + runner with 84 conformance tests / 128 tier evaluations
 - [x] False-positive corpus: 250+ legitimate dev commands
 - [x] Conformance test harness (conformance-runner.sh + expected.json)
 - [x] JSON Schema for managed-settings format

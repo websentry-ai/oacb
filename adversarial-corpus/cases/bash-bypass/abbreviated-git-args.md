@@ -35,7 +35,7 @@ A correct fix requires shell-level argument parsing (`getopt` equivalents) appli
 
 | Command | OACB result |
 |---------|-------------|
-| `git clone --upload-pack=evil-binary https://repo.example.com` | exit 2, OACB-GIT-001 (if it matches the force-push pattern) — wait, actually the git force-push rule only covers `git push`. `git clone --upload-pack` is NOT covered by any OACB rule. exit 0. |
+| `git clone --upload-pack=evil-binary https://repo.example.com` | exit 0 — not covered by any OACB rule (`OACB-GIT-001` covers `git push --force` only) |
 | `git clone --upload-pa=evil-binary https://repo.example.com` | exit 0 — residual |
 
 **Test (residual):** `git clone --upload-pa=attacker-binary https://repo.example.com` exits 0.

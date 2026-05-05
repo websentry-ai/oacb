@@ -31,7 +31,7 @@ jobs:
       - name: Install tools
         run: |
           sudo apt-get install -y jq
-          pip install check-jsonschema
+          pip install check-jsonschema==0.31.3
 
       - name: "Inv-1: every blocking rule ID in hooks has a test case"
         run: |
