@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/websentry-ai/oacb/main/schemas/managed-settings-0.1.json",
   "_oacb": {
     "name": "OACB Claude Code Auto Mode Profile",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "tier": "strict",
     "repo": "https://github.com/websentry-ai/oacb",
     "supportedClaudeCodeRange": ">=2.1.83 <3.0.0",
@@ -23,7 +23,6 @@
       "Bash(rm -fr /*)",
       "Bash(rm -fr ~*)",
       "Bash(rm -Rf /*)",
-      "Bash(:(){ :|:& };:)",
 
       "Bash(terraform destroy *)",
       "Bash(terraform apply -auto-approve*)",
@@ -247,6 +246,34 @@
             "type": "command",
             "command": "/usr/local/share/oacb/hooks/oacb-prompt-guard.sh",
             "timeout": 3000,
+            "env": { "OACB_TIER": "strict" }
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-post-tool.sh",
+            "timeout": 3000,
+            "async": true,
+            "env": { "OACB_TIER": "strict" }
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-post-tool.sh",
+            "timeout": 3000,
+            "async": true,
             "env": { "OACB_TIER": "strict" }
           }
         ]

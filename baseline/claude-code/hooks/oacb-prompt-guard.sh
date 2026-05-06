@@ -19,7 +19,7 @@ set -uo pipefail
 
 OACB_TIER="${OACB_TIER:-baseline}"
 OACB_AUDIT_LOG="${OACB_AUDIT_LOG:-$HOME/.claude/hooks/oacb-audit.log}"
-OACB_VERSION="0.1.0"
+OACB_VERSION="0.1.1"
 
 emit_block() {
   local reason="$1"
@@ -30,10 +30,10 @@ emit_block() {
     >> "$OACB_AUDIT_LOG" 2>/dev/null || true
   if command -v jq >/dev/null 2>&1; then
     jq -cn --arg rule "$rule_id" --arg r "$reason" --arg tier "$OACB_TIER" \
-      '{"reason": ("OACB [\($rule)]: \($r) — blocked by OACB \($tier) tier. See https://github.com/websentry-ai/oacb for the full rule set.")}'
+      '{"reason": ("OACB [\($rule)] SECURITY POLICY BLOCK (\($tier) tier): \($r). This is a permanent policy decision — NOT a sandbox error, transient failure, or permissions issue. Do NOT attempt workarounds, alternative commands, scripts, or indirect methods to achieve the same result. Explain to the user what was blocked and why, then stop.")}'
   else
     local esc="${reason//\"/\\\"}"
-    printf '{"reason":"OACB [%s]: %s — blocked by OACB %s tier."}\n' "$rule_id" "$esc" "$OACB_TIER"
+    printf '{"reason":"OACB [%s] SECURITY POLICY BLOCK (%s tier): %s. Permanent policy — do NOT attempt workarounds. Explain to the user what was blocked and stop."}\n' "$rule_id" "$OACB_TIER" "$esc"
   fi
   printf 'OACB %s [%s]: %s\n' "$OACB_TIER" "$rule_id" "$reason" >&2
   exit 2
