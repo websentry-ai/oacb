@@ -26,23 +26,38 @@ set -uo pipefail
 OACB_TIER="${OACB_TIER:-baseline}"
 OACB_AUDIT_LOG="${OACB_AUDIT_LOG:-$HOME/.claude/hooks/oacb-audit.log}"
 OACB_MAX_INPUT_BYTES="${OACB_MAX_INPUT_BYTES:-131072}"
-OACB_VERSION="0.1.0"
+OACB_VERSION="0.1.1"
 
 # --- helpers (defined before trap) ----------------------------------------
 
 _audit_line() {
-  # $1=decision $2=rule_id $3=reason
+  # $1=decision $2=rule_id $3=reason $4=cmd (optional)
   # Use jq to construct safe JSON if available; else best-effort printf.
   if command -v jq >/dev/null 2>&1; then
-    jq -cn \
-      --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-      --arg decision "$1" \
-      --arg tier "$OACB_TIER" \
-      --arg rule "$2" \
-      --arg reason "$3" \
-      --arg ver "$OACB_VERSION" \
-      '{ts:$ts,decision:$decision,tier:$tier,rule:$rule,reason:$reason,oacb_version:$ver}' \
-      >> "$OACB_AUDIT_LOG" 2>/dev/null || true
+    local cmd_snippet="${4:-}"
+    cmd_snippet="${cmd_snippet:0:500}"
+    if [[ -n "$cmd_snippet" ]]; then
+      jq -cn \
+        --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        --arg decision "$1" \
+        --arg tier "$OACB_TIER" \
+        --arg rule "$2" \
+        --arg reason "$3" \
+        --arg cmd "$cmd_snippet" \
+        --arg ver "$OACB_VERSION" \
+        '{ts:$ts,decision:$decision,tier:$tier,rule:$rule,reason:$reason,cmd:$cmd,oacb_version:$ver}' \
+        >> "$OACB_AUDIT_LOG" 2>/dev/null || true
+    else
+      jq -cn \
+        --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        --arg decision "$1" \
+        --arg tier "$OACB_TIER" \
+        --arg rule "$2" \
+        --arg reason "$3" \
+        --arg ver "$OACB_VERSION" \
+        '{ts:$ts,decision:$decision,tier:$tier,rule:$rule,reason:$reason,oacb_version:$ver}' \
+        >> "$OACB_AUDIT_LOG" 2>/dev/null || true
+    fi
   else
     # Fallback with minimal escaping
     local esc="${3//\\/\\\\}"
@@ -62,10 +77,10 @@ emit_block() {
   # explain the block to the user rather than showing a generic hook-failed message.
   if command -v jq >/dev/null 2>&1; then
     jq -cn --arg rule "$rule_id" --arg r "$reason" --arg tier "$OACB_TIER" \
-      '{"reason": ("OACB [\($rule)]: \($r) — blocked by OACB \($tier) tier. See https://github.com/websentry-ai/oacb for the full rule set.")}'
+      '{"reason": ("OACB [\($rule)] SECURITY POLICY BLOCK (\($tier) tier): \($r). This is a permanent policy decision — NOT a sandbox error, transient failure, or permissions issue. Do NOT attempt workarounds, alternative commands, scripts, or indirect methods to achieve the same result. Explain to the user what was blocked and why, then stop.")}'
   else
     local esc="${reason//\"/\\\"}"
-    printf '{"reason":"OACB [%s]: %s — blocked by OACB %s tier."}\n' "$rule_id" "$esc" "$OACB_TIER"
+    printf '{"reason":"OACB [%s] SECURITY POLICY BLOCK (%s tier): %s. Permanent policy — do NOT attempt workarounds. Explain to the user what was blocked and stop."}\n' "$rule_id" "$OACB_TIER" "$esc"
   fi
   printf 'OACB %s [%s]: %s\n' "$OACB_TIER" "$rule_id" "$reason" >&2
   exit 2
@@ -74,15 +89,17 @@ emit_block() {
 emit_audit_allow() {
   local rule_id="${1:-OACB-ALLOW}"
   local reason="${2:-explicit allow}"
+  local cmd_val="${3:-}"
   mkdir -p "$(dirname "$OACB_AUDIT_LOG")" 2>/dev/null || true
-  _audit_line "allow" "$rule_id" "$reason"
+  _audit_line "allow" "$rule_id" "$reason" "$cmd_val"
 }
 
 emit_audit_warn() {
   local rule_id="$1"
   local reason="$2"
+  local cmd_val="${3:-}"
   mkdir -p "$(dirname "$OACB_AUDIT_LOG")" 2>/dev/null || true
-  _audit_line "warn" "$rule_id" "$reason"
+  _audit_line "warn" "$rule_id" "$reason" "$cmd_val"
 }
 
 # Fail-closed on signals (INT/TERM from timeout, HUP, QUIT, ABRT, PIPE).
@@ -208,7 +225,7 @@ if [[ "${sep_count:-0}" -gt 10 ]]; then
       emit_block "compound command has $sep_count separators, exceeds OACB limit (10)" "OACB-COMPOUND-001"
       ;;
     baseline)
-      emit_audit_warn "OACB-COMPOUND-001" "compound command separators=$sep_count"
+      emit_audit_warn "OACB-COMPOUND-001" "compound command separators=$sep_count" "$cmd"
       ;;
   esac
 fi
@@ -357,7 +374,7 @@ _check_curl_pipe_per_clause() {
 if echo "$unquoted" | grep -qE '\b(curl|wget|fetch)\b[^|]*\|\s*(sudo\s+)?(bash|sh|zsh|ksh)\b'; then
   _check_curl_pipe_per_clause "$unquoted"
   # If we reach here, every curl|sh clause in the command had a trusted installer host.
-  emit_audit_allow "OACB-NET-001-ALLOW" "all curl|sh clauses map to trusted installer hosts"
+  emit_audit_allow "OACB-NET-001-ALLOW" "all curl|sh clauses map to trusted installer hosts" "$cmd"
 fi
 
 # --- netcat / socat / bash tcp ---------------------------------------------
@@ -397,5 +414,5 @@ fi
 
 # --- default: allow --------------------------------------------------------
 
-emit_audit_allow "OACB-DEFAULT-ALLOW" "no deny rule matched"
+emit_audit_allow "OACB-DEFAULT-ALLOW" "no deny rule matched" "$cmd"
 exit 0
