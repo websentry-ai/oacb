@@ -75,6 +75,7 @@
       "properties": {
         "PreToolUse": { "$ref": "#/$defs/HookArray" },
         "PostToolUse": { "$ref": "#/$defs/HookArray" },
+        "PostToolUseFailure": { "$ref": "#/$defs/HookArray" },
         "UserPromptSubmit": { "$ref": "#/$defs/HookArray" },
         "SessionStart": { "$ref": "#/$defs/HookArray" },
         "SessionEnd": { "$ref": "#/$defs/HookArray" },
