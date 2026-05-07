@@ -41,6 +41,10 @@
       "Bash(eval *)",
       "Bash(exec *)",
 
+      "Bash(history)",
+      "Bash(eval)",
+      "Bash(exec)",
+
       "Bash(find / -delete*)",
       "Bash(find ~ -delete*)",
 
@@ -137,8 +141,8 @@
       "Read(./config/**)",
       "Read(./secrets/**)",
 
-      "Write(./**)",
-      "Edit(./**)",
+      "Write(**/**)",
+      "Edit(**/**)",
 
       "WebFetch(domain:*)"
     ],
