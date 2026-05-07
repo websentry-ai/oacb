@@ -20,6 +20,11 @@
       "Bash(rm -fr /*)",
       "Bash(rm -fr ~*)",
       "Bash(rm -Rf /*)",
+      "Bash(rm -fr ${HOME)",
+      "Bash(rm -fr $HOME*)",
+      "Bash(rm -Rf ${HOME)",
+      "Bash(rm -Rf $HOME*)",
+
       "Bash(dd *)",
 
       "Bash(terraform destroy *)",
