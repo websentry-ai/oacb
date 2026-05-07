@@ -17,9 +17,15 @@ Claude Code operating against this repository is subject to OACB baseline rules.
 - Do not read `.env` files, SSH keys, AWS credentials, or shell history files.
 - Do not modify `.claude/`, `.cursor/`, `.codex/`, `CLAUDE.md`, or `AGENTS.md` during task execution. If a task legitimately requires modifying these, stop and ask the user first.
 
-### 2. Escalate for destructive or state-changing actions
+### 2. State intent before any ask-gated command
 
-Before running any of these, summarize the change, name the affected system, and ask for explicit approval:
+When a command requires user approval (i.e. the permission prompt will appear), you must state the following **before** the prompt appears — not after:
+
+1. **What** the command does (one sentence, plain language)
+2. **Why** you need it for this specific task
+3. **What will be affected** — files changed, services restarted, data written, network calls made
+
+Do not invoke the command until you have provided this explanation. This applies to all commands requiring approval at the current OACB tier, including:
 
 - `git push` to any branch
 - `npm publish` / `cargo publish` / `pip upload`
@@ -27,6 +33,10 @@ Before running any of these, summarize the change, name the affected system, and
 - `kubectl apply` / `kubectl delete` / `kubectl exec` against any cluster
 - `terraform apply`
 - Any `aws iam`, `gcloud iam`, `az role` command
+- `curl` / `wget` fetching external content
+- `sudo` / `doas` / privilege-escalation commands
+- `chmod` / `chown` / `iptables` / `pfctl` / firewall changes
+- `ssh` / `scp` / `rsync` to remote hosts
 - Migrations with side effects
 - Modifying top-level project manifests (`package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`)
 

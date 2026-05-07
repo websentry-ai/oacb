@@ -13,9 +13,6 @@
     "defaultMode": "acceptEdits",
 
     "deny": [
-      "Bash(curl *)",
-      "Bash(wget *)",
-
       "Bash(rm -rf /*)",
       "Bash(rm -rf ~*)",
       "Bash(rm -rf ${HOME}*)",
@@ -40,25 +37,14 @@
 
       "Bash(history *)",
       "Bash(eval *)",
+      "Bash(exec *)",
+
+      "Bash(history)",
+      "Bash(eval)",
+      "Bash(exec)",
 
       "Bash(find / -delete*)",
       "Bash(find ~ -delete*)",
-
-      "Bash(sudo *)",
-      "Bash(doas *)",
-
-      "Bash(chmod -R *)",
-      "Bash(chown -R *)",
-      "Bash(mount *)",
-      "Bash(umount *)",
-
-      "Bash(iptables *)",
-      "Bash(nft *)",
-      "Bash(pfctl *)",
-
-      "Bash(ssh-keygen *)",
-      "Bash(gpg --import*)",
-      "Bash(gpg --delete-key*)",
 
       "Read(**/.env)",
       "Read(**/.env.*)",
@@ -89,12 +75,29 @@
       "Edit(**/.claude/settings*.json)",
       "Edit(**/.claude/hooks/**)",
       "Edit(**/CLAUDE.md)",
-      "Edit(**/AGENTS.md)",
-
-      "WebFetch(domain:*)"
+      "Edit(**/AGENTS.md)"
     ],
 
     "ask": [
+      "Bash(curl *)",
+      "Bash(wget *)",
+
+      "Bash(sudo *)",
+      "Bash(doas *)",
+
+      "Bash(chmod -R *)",
+      "Bash(chown -R *)",
+      "Bash(mount *)",
+      "Bash(umount *)",
+
+      "Bash(iptables *)",
+      "Bash(nft *)",
+      "Bash(pfctl *)",
+
+      "Bash(ssh-keygen *)",
+      "Bash(gpg --import*)",
+      "Bash(gpg --delete-key*)",
+
       "Bash(git push *)",
       "Bash(npm publish *)",
       "Bash(pnpm publish *)",
@@ -122,6 +125,8 @@
       "Bash(drizzle-kit push *)",
       "Bash(prisma migrate *)",
       "Bash(alembic upgrade *)",
+
+      "WebFetch(domain:*)",
 
       "Write(**/package.json)",
       "Write(**/Cargo.toml)",
@@ -203,8 +208,9 @@
       "Never run curl | bash or wget | bash patterns",
       "Never read SSH private keys, AWS credentials, or shell history files",
       "Never modify .claude/, .cursor/, .codex/, or agent config directories",
-      "Never invoke sudo, doas, or privilege-escalation tooling",
-      "Never modify iptables, nftables, or firewall configuration"
+      "Before invoking sudo, doas, or any privilege-escalation command: state what the command does, why it is needed, and what it will change — then request explicit user approval",
+      "Before modifying firewall rules (iptables, nft, pfctl): state the rule change, the affected traffic, and the reason — then request explicit user approval",
+      "Before running curl or wget: state the URL, the intended use of the downloaded content, and whether it will be executed — then request explicit user approval"
     ],
     "allow": [
       "$defaults",
