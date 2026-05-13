@@ -81,7 +81,8 @@ jobs:
         run: |
           for f in baseline/claude-code/managed-settings.*.json; do
             echo "Validating: $f"
-            check-jsonschema --schemafile schemas/managed-settings-0.1.json "$f"
+            schema_file=$(jq -r '."$schema"' "$f" | sed 's|.*/schemas/||')
+            check-jsonschema --schemafile "schemas/$schema_file" "$f"
           done
 
       - name: "Inv-3: _oacb.tier field matches filename"
