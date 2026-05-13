@@ -1,0 +1,61 @@
+# OACB Codex Configuration — strict tier
+# Install with: unbound oacb apply --agent codex --tier strict
+#
+# Strict tier: untrusted approval policy — all non-read operations require
+# human approval. Intended for pre-production, regulated teams, or teams
+# handling customer data.
+#
+# _oacb metadata (inline — Codex ignores unknown tables at strictValidation=false)
+# name:    "OACB Codex Profile"
+# version: "0.1.1"
+# tier:    "strict"
+# repo:    "https://github.com/websentry-ai/oacb"
+
+approval_policy = "untrusted"
+sandbox_mode    = "workspace-write"
+
+[shell_environment_policy]
+inherit  = "core"
+exclude  = ["AWS_*", "AZURE_*", "GCP_*", "GOOGLE_*", "*_SECRET*", "*_TOKEN*", "*_KEY*", "*_CREDENTIAL*", "*_PASSWORD*"]
+
+# PreToolUse — Bash: enforce OACB rules, exit 2 on deny
+[[hooks.PreToolUse]]
+matcher = "^Bash$"
+[[hooks.PreToolUse.hooks]]
+type    = "command"
+command = "~/.codex/hooks/oacb-enforce.sh"
+timeout = 5
+env     = { OACB_TIER = "strict" }
+
+# PreToolUse — MCP: block destructive tool names + enforce allowlist
+[[hooks.PreToolUse]]
+matcher = "^mcp__.*$"
+[[hooks.PreToolUse.hooks]]
+type    = "command"
+command = "~/.codex/hooks/oacb-mcp-guard.sh"
+timeout = 3
+env     = { OACB_TIER = "strict" }
+
+# UserPromptSubmit: block injection patterns and jailbreaks
+[[hooks.UserPromptSubmit]]
+[[hooks.UserPromptSubmit.hooks]]
+type    = "command"
+command = "~/.codex/hooks/oacb-prompt-guard.sh"
+timeout = 3
+env     = { OACB_TIER = "strict" }
+
+[[hooks.PostToolUse]]
+matcher = ".*"
+[[hooks.PostToolUse.hooks]]
+type    = "command"
+command = "~/.codex/hooks/oacb-post-tool.sh"
+timeout = 3
+env     = { OACB_TIER = "strict" }
+
+[[hooks.PostToolUseFailure]]
+matcher = ".*"
+[[hooks.PostToolUseFailure.hooks]]
+type    = "command"
+command = "~/.codex/hooks/oacb-post-tool.sh"
+timeout = 3
+env     = { OACB_TIER = "strict" }

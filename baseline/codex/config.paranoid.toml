@@ -1,0 +1,65 @@
+# OACB Codex Configuration — paranoid tier
+# Install with: unbound oacb apply --agent codex --tier paranoid
+#
+# Paranoid tier: read-only sandbox + untrusted approval policy. For FedRAMP,
+# classified, or highly regulated environments. Not intended for fleet-wide
+# deployment — apply per-project.
+#
+# NOTE: --yolo and --dangerously-bypass-approvals-and-sandbox override this
+# config on personal installs. Enforce via requirements.toml on MDM-managed
+# machines (requires /etc/codex/config.toml, root write access).
+#
+# _oacb metadata (inline — Codex ignores unknown tables at strictValidation=false)
+# name:    "OACB Codex Profile"
+# version: "0.1.1"
+# tier:    "paranoid"
+# repo:    "https://github.com/websentry-ai/oacb"
+
+approval_policy = "untrusted"
+sandbox_mode    = "read-only"
+
+[shell_environment_policy]
+inherit  = "core"
+exclude  = ["AWS_*", "AZURE_*", "GCP_*", "GOOGLE_*", "*_SECRET*", "*_TOKEN*", "*_KEY*", "*_CREDENTIAL*", "*_PASSWORD*", "HISTFILE", "HISTSIZE", "HISTFILESIZE"]
+
+# PreToolUse — Bash: enforce OACB rules, exit 2 on deny
+[[hooks.PreToolUse]]
+matcher = "^Bash$"
+[[hooks.PreToolUse.hooks]]
+type    = "command"
+command = "~/.codex/hooks/oacb-enforce.sh"
+timeout = 5
+env     = { OACB_TIER = "paranoid" }
+
+# PreToolUse — MCP: enforce allowlist, block destructive names
+[[hooks.PreToolUse]]
+matcher = "^mcp__.*$"
+[[hooks.PreToolUse.hooks]]
+type    = "command"
+command = "~/.codex/hooks/oacb-mcp-guard.sh"
+timeout = 3
+env     = { OACB_TIER = "paranoid" }
+
+# UserPromptSubmit: all prompt-guard checks including jailbreaks
+[[hooks.UserPromptSubmit]]
+[[hooks.UserPromptSubmit.hooks]]
+type    = "command"
+command = "~/.codex/hooks/oacb-prompt-guard.sh"
+timeout = 3
+env     = { OACB_TIER = "paranoid" }
+
+[[hooks.PostToolUse]]
+matcher = ".*"
+[[hooks.PostToolUse.hooks]]
+type    = "command"
+command = "~/.codex/hooks/oacb-post-tool.sh"
+timeout = 3
+env     = { OACB_TIER = "paranoid" }
+
+[[hooks.PostToolUseFailure]]
+matcher = ".*"
+[[hooks.PostToolUseFailure.hooks]]
+type    = "command"
+command = "~/.codex/hooks/oacb-post-tool.sh"
+timeout = 3
+env     = { OACB_TIER = "paranoid" }

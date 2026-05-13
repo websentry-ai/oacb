@@ -1,0 +1,62 @@
+# OACB Codex Configuration — receipts tier
+# Install with: unbound oacb apply --agent codex --tier receipts
+#
+# Receipts tier: warn on risky commands — engineer sees each event in real time
+# and can abort. No hard blocks. Expires in 30 days; renew or upgrade to baseline.
+#
+# _oacb metadata (inline — Codex ignores unknown tables at strictValidation=false)
+# name:                 "OACB Codex Profile"
+# version:              "0.2.0"
+# tier:                 "receipts"
+# repo:                 "https://github.com/websentry-ai/oacb"
+# risk_taxonomy_version: "1.0"
+# channels:             ["status-line"]
+
+approval_policy = "on-request"
+sandbox_mode    = "workspace-write"
+
+[shell_environment_policy]
+inherit  = "core"
+exclude  = ["AWS_*", "AZURE_*", "GCP_*", "GOOGLE_*", "*_SECRET*", "*_TOKEN*", "*_KEY*", "*_CREDENTIAL*", "*_PASSWORD*"]
+
+# PreToolUse — Bash: warn on risky commands (exit 0), display OACB WARN banner
+[[hooks.PreToolUse]]
+matcher = "^Bash$"
+[[hooks.PreToolUse.hooks]]
+type    = "command"
+command = "~/.codex/hooks/oacb-enforce.sh"
+timeout = 35
+env     = { OACB_TIER = "receipts", OACB_CHANNELS = "status-line" }
+
+# PreToolUse — MCP: block known-malicious servers
+[[hooks.PreToolUse]]
+matcher = "^mcp__.*$"
+[[hooks.PreToolUse.hooks]]
+type    = "command"
+command = "~/.codex/hooks/oacb-mcp-guard.sh"
+timeout = 3
+env     = { OACB_TIER = "receipts" }
+
+# UserPromptSubmit: block bidi/invisible Unicode and credential pastes
+[[hooks.UserPromptSubmit]]
+[[hooks.UserPromptSubmit.hooks]]
+type    = "command"
+command = "~/.codex/hooks/oacb-prompt-guard.sh"
+timeout = 3
+env     = { OACB_TIER = "receipts" }
+
+[[hooks.PostToolUse]]
+matcher = ".*"
+[[hooks.PostToolUse.hooks]]
+type    = "command"
+command = "~/.codex/hooks/oacb-post-tool.sh"
+timeout = 3
+env     = { OACB_TIER = "receipts" }
+
+[[hooks.PostToolUseFailure]]
+matcher = ".*"
+[[hooks.PostToolUseFailure.hooks]]
+type    = "command"
+command = "~/.codex/hooks/oacb-post-tool.sh"
+timeout = 3
+env     = { OACB_TIER = "receipts" }

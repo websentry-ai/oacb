@@ -16,3 +16,8 @@ oacb-audit.log
 
 # development docs
 AUDIT.md
+
+# implementation plans (local, not shipped)
+plans/
+docs/
+.claude/

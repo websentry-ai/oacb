@@ -22,6 +22,25 @@ jobs:
       - name: Run conformance suite
         run: bash conformance-tests/conformance-runner.sh
 
+  conformance-codex:
+    name: Conformance suite — Codex agent
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Make shared and Codex hook scripts executable
+        run: |
+          chmod +x baseline/shared/oacb-enforce-core.sh
+          chmod +x baseline/codex/hooks/*.sh
+
+      - name: Run Codex conformance suite
+        run: bash conformance-tests/conformance-runner.sh --agent codex
+        env:
+          OACB_SHARED_DIR: baseline/shared
+
   invariants:
     name: Architectural invariants
     runs-on: ubuntu-latest

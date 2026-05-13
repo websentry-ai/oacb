@@ -1,0 +1,12 @@
+# OACB Codex Requirements — strict tier (enterprise enforcement)
+#
+# Deploy to /etc/codex/config.toml via MDM to lock policy settings.
+#
+# _oacb:
+# name:    "OACB Codex Requirements"
+# version: "0.1.1"
+# tier:    "strict"
+
+[requirements]
+approval_policy = "untrusted"
+sandbox_mode    = "workspace-write"

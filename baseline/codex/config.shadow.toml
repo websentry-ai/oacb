@@ -1,0 +1,60 @@
+# OACB Codex Configuration — shadow tier
+# Install with: unbound oacb apply --agent codex --tier shadow
+#
+# Shadow tier: audit log only. Zero blocking. Use to measure rule hit-rate
+# before committing to baseline enforcement.
+#
+# _oacb metadata (inline — Codex ignores unknown tables at strictValidation=false)
+# name:    "OACB Codex Profile"
+# version: "0.1.1"
+# tier:    "shadow"
+# repo:    "https://github.com/websentry-ai/oacb"
+
+approval_policy = "on-request"
+sandbox_mode    = "workspace-write"
+
+[shell_environment_policy]
+inherit  = "core"
+exclude  = ["AWS_*", "AZURE_*", "GCP_*", "GOOGLE_*", "*_SECRET*", "*_TOKEN*", "*_KEY*", "*_CREDENTIAL*", "*_PASSWORD*"]
+
+# PreToolUse — Bash: audit only (OACB_TIER=shadow never exits 2)
+[[hooks.PreToolUse]]
+matcher = "^Bash$"
+[[hooks.PreToolUse.hooks]]
+type    = "command"
+command = "~/.codex/hooks/oacb-enforce.sh"
+timeout = 5
+env     = { OACB_TIER = "shadow" }
+
+# PreToolUse — MCP: audit only
+[[hooks.PreToolUse]]
+matcher = "^mcp__.*$"
+[[hooks.PreToolUse.hooks]]
+type    = "command"
+command = "~/.codex/hooks/oacb-mcp-guard.sh"
+timeout = 3
+env     = { OACB_TIER = "shadow" }
+
+# UserPromptSubmit: audit only
+[[hooks.UserPromptSubmit]]
+[[hooks.UserPromptSubmit.hooks]]
+type    = "command"
+command = "~/.codex/hooks/oacb-prompt-guard.sh"
+timeout = 3
+env     = { OACB_TIER = "shadow" }
+
+[[hooks.PostToolUse]]
+matcher = ".*"
+[[hooks.PostToolUse.hooks]]
+type    = "command"
+command = "~/.codex/hooks/oacb-post-tool.sh"
+timeout = 3
+env     = { OACB_TIER = "shadow" }
+
+[[hooks.PostToolUseFailure]]
+matcher = ".*"
+[[hooks.PostToolUseFailure.hooks]]
+type    = "command"
+command = "~/.codex/hooks/oacb-post-tool.sh"
+timeout = 3
+env     = { OACB_TIER = "shadow" }

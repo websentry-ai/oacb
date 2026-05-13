@@ -1,0 +1,190 @@
+{
+  "$schema": "https://raw.githubusercontent.com/websentry-ai/oacb/main/schemas/managed-settings-0.2.json",
+  "_oacb": {
+    "name": "OACB Claude Code Auto Mode Profile",
+    "version": "0.2.0",
+    "tier": "receipts",
+    "repo": "https://github.com/websentry-ai/oacb",
+    "supportedClaudeCodeRange": ">=2.1.83 <3.0.0",
+    "description": "Receipts tier: WARN only, no blocks. Engineer sees risky commands as they fire and can abort. Expires in 30 days — renew or upgrade to baseline.",
+    "risk_taxonomy_version": "1.0",
+    "channels": ["status-line"]
+  },
+
+  "permissions": {
+    "defaultMode": "default",
+
+    "deny": [],
+    "ask": [],
+
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm ci)",
+      "Bash(npm install *)",
+      "Bash(npm test *)",
+      "Bash(pnpm *)",
+      "Bash(yarn *)",
+      "Bash(bun *)",
+      "Bash(uv *)",
+      "Bash(pip install *)",
+      "Bash(cargo build *)",
+      "Bash(cargo test *)",
+      "Bash(cargo run *)",
+      "Bash(go build *)",
+      "Bash(go test *)",
+      "Bash(go run *)",
+      "Bash(make *)",
+
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git pull *)",
+      "Bash(git fetch *)",
+      "Bash(git stash *)",
+      "Bash(git push *)",
+
+      "Bash(gh pr list *)",
+      "Bash(gh pr view *)",
+      "Bash(gh issue list *)",
+      "Bash(gh issue view *)",
+
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(grep *)",
+      "Bash(find *)",
+      "Bash(wc *)",
+      "Bash(sort *)",
+      "Bash(uniq *)",
+      "Bash(awk *)",
+      "Bash(sed *)",
+      "Bash(pwd)",
+      "Bash(cd *)",
+      "Bash(echo *)",
+      "Bash(printf *)",
+
+      "Bash(docker build *)",
+      "Bash(docker run *)",
+      "Bash(docker ps *)",
+      "Bash(docker logs *)",
+      "Bash(docker compose *)",
+
+      "Bash(kubectl get *)",
+      "Bash(kubectl describe *)",
+      "Bash(kubectl logs *)",
+
+      "Read(./**)",
+      "Read(../**)",
+
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:registry.npmjs.org)",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:docs.claude.com)",
+      "WebFetch(domain:docs.anthropic.com)"
+    ],
+
+    "allowManagedPermissionRulesOnly": false,
+    "allowManagedHooksOnly": true,
+    "allowManagedMcpServersOnly": false,
+    "disableBypassPermissionsMode": "disable"
+  },
+
+  "autoMode": {
+    "environment": [
+      "$defaults",
+      "OACB receipts tier — warn on risky commands, engineer notified in real time"
+    ],
+    "soft_deny": [
+      "$defaults"
+    ]
+  },
+
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-enforce.sh",
+            "timeout": 35000,
+            "env": {
+              "OACB_TIER": "receipts",
+              "OACB_CHANNELS": "status-line"
+            }
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-mcp-guard.sh",
+            "timeout": 3000,
+            "env": { "OACB_TIER": "receipts" }
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-prompt-guard.sh",
+            "timeout": 3000,
+            "env": { "OACB_TIER": "receipts" }
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-post-tool.sh",
+            "timeout": 3000,
+            "async": true,
+            "env": { "OACB_TIER": "receipts" }
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-post-tool.sh",
+            "timeout": 3000,
+            "async": true,
+            "env": { "OACB_TIER": "receipts" }
+          }
+        ]
+      }
+    ],
+    "ConfigChange": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/share/oacb/hooks/oacb-config-audit.sh",
+            "timeout": 3000,
+            "env": { "OACB_TIER": "receipts" }
+          }
+        ]
+      }
+    ]
+  }
+}
