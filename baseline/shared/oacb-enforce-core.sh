@@ -352,7 +352,7 @@ if [[ "$OACB_TIER" == "shadow" ]]; then
       '{ts:$ts,decision:"allow",tier:$tier,rule:"OACB-SHADOW",risk:"low",risk_taxonomy_version:"1.0",reason:"shadow tier — logged, not enforced",cmd:$cmd,oacb_version:$ver}' \
       >> "$OACB_AUDIT_LOG" 2>/dev/null || true
   else
-    local cmd_safe="${cmd_head//\"/\\\"}"
+    cmd_safe="${cmd_head//\"/\\\"}"
     printf '{"ts":"%s","decision":"allow","tier":"shadow","rule":"OACB-SHADOW","risk":"low","risk_taxonomy_version":"1.0","reason":"shadow tier — logged, not enforced","cmd":"%s","oacb_version":"%s"}\n' \
       "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$cmd_safe" "$OACB_VERSION" \
       >> "$OACB_AUDIT_LOG" 2>/dev/null || true

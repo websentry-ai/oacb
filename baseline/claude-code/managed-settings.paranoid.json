@@ -81,10 +81,15 @@
       "Write(/var/**)",
       "Write(~/.ssh/**)",
       "Write(~/Library/**)",
-      "Edit(**/.claude/settings*.json)",
-      "Edit(**/.claude/hooks/**)",
+      "Edit(**/.claude/**)",
+      "Edit(**/.cursor/**)",
+      "Edit(**/.codex/**)",
       "Edit(**/CLAUDE.md)",
-      "Edit(**/AGENTS.md)"
+      "Edit(**/AGENTS.md)",
+      "Edit(/etc/**)",
+      "Edit(/var/**)",
+      "Edit(~/.ssh/**)",
+      "Edit(~/Library/**)"
     ],
 
     "ask": [
