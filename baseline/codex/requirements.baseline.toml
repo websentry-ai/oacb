@@ -1,0 +1,17 @@
+# OACB Codex Requirements — baseline tier (enterprise enforcement)
+#
+# Deploy to /etc/codex/config.toml (requires root) via MDM to lock
+# approval_policy and sandbox_mode so users cannot override them with
+# --yolo or --dangerously-bypass-approvals-and-sandbox.
+#
+# Personal installs: these flags are unblockable at the host layer.
+# Document as a known residual in non-claims.md.
+#
+# _oacb:
+# name:    "OACB Codex Requirements"
+# version: "0.1.1"
+# tier:    "baseline"
+
+[requirements]
+approval_policy = "on-request"
+sandbox_mode    = "workspace-write"
