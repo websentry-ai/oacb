@@ -220,7 +220,9 @@ emit_ask() {
     "$reason" "$OACB_TIER" "$effective_risk" "$rule_id" "$cmd_val" >&2
 
   local key=""
-  if read -rsn1 -t 30 key 2>/dev/null; then
+  local key=""
+  # Must read from /dev/tty, not fd 0: stdin was consumed by `input="$(cat)"`.
+  if read -rsn1 -t 30 key < /dev/tty 2>/dev/null; then
     printf '\n' >&2
     if [[ "$key" == "a" || "$key" == "A" ]]; then
       emit_audit_allow "$rule_id" "engineer explicitly allowed: $reason" "$cmd_val"
@@ -271,7 +273,8 @@ emit_warn() {
 
     # One-keystroke abort with 30s timeout (default: Continue)
     local key=""
-    if read -rsn1 -t 30 key 2>/dev/null; then
+    # Must read from /dev/tty, not fd 0: stdin was consumed by `input="$(cat)"`.
+    if read -rsn1 -t 30 key < /dev/tty 2>/dev/null; then
       printf '\n' >&2
       if [[ "$key" == "a" || "$key" == "A" ]]; then
         _audit_line_aborted "$rule_id" "$reason" "$cmd_val"
