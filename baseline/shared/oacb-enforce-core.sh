@@ -204,11 +204,40 @@ _audit_line_aborted() {
   fi
 }
 
+emit_ask() {
+  local rule_id="$1" reason="$2" cmd_val="${3:-}"
+  local effective_risk
+  effective_risk="$(_effective_risk "$rule_id" "$cmd_val")"
+
+  mkdir -p "$(dirname "$OACB_AUDIT_LOG")" 2>/dev/null || true
+  _audit_line "ask" "$rule_id" "$reason" "$cmd_val"
+
+  if [[ "${OACB_CHANNELS:-}" == *bell* ]]; then
+    printf '\a' >&2
+  fi
+
+  printf '\n[OACB ASK] %s (%s tier | risk: %s)\n  Rule: %s\n  Command: %.120s\n  [A]llow  [B]lock (30s → Block): ' \
+    "$reason" "$OACB_TIER" "$effective_risk" "$rule_id" "$cmd_val" >&2
+
+  local key=""
+  if read -rsn1 -t 30 key 2>/dev/null; then
+    printf '\n' >&2
+    if [[ "$key" == "a" || "$key" == "A" ]]; then
+      emit_audit_allow "$rule_id" "engineer explicitly allowed: $reason" "$cmd_val"
+      exit 0
+    fi
+  else
+    printf '\n' >&2
+  fi
+
+  emit_block "engineer did not allow (ask default: block)" "$rule_id"
+}
+
 emit_warn() {
   local rule_id="$1" reason="$2" cmd_val="${3:-}"
   local category="${rule_id%%-[0-9]*}"   # e.g. OACB-NET from OACB-NET-001
-  local seen_file="/tmp/oacb-warn-seen-${$}-${category}"
-  local counter_file="/tmp/oacb-warn-count-$$"
+  local seen_file="/tmp/oacb-warn-seen-${OACB_SESSION_ID:-default}-${category}"
+  local counter_file="/tmp/oacb-warn-count-${OACB_SESSION_ID:-default}"
 
   # Audit log — always
   mkdir -p "$(dirname "$OACB_AUDIT_LOG")" 2>/dev/null || true
@@ -273,10 +302,7 @@ _dispatch() {
   case "$action" in
     block) emit_block "$reason" "$rule_id" ;;
     warn)  emit_warn  "$rule_id" "$reason" "$cmd_val" ;;
-    # ask: hook blocks — the managed-settings ask list would surface a
-    # permission prompt to the engineer in Claude Code's UI. At hook layer,
-    # we must still exit non-zero so the tool does not run silently.
-    ask)   emit_block "$reason" "$rule_id" ;;
+    ask)   emit_ask   "$rule_id" "$reason" "$cmd_val" ;;
     allow) emit_audit_allow "$rule_id" "allow: $reason" "$cmd_val" ;;
   esac
 }
@@ -319,6 +345,11 @@ tool_name="$(echo "$input" | jq -r '.tool_name // empty' 2>/dev/null)"
 if [[ -z "$tool_name" ]]; then
   emit_block "could not parse tool_name from hook input" "OACB-IO-002"
 fi
+
+# Session ID: stable across all hook invocations in one Claude Code/Codex session.
+# Falls back to an hourly bucket so dedup works even if session_id is absent.
+_raw_session_id="$(echo "$input" | jq -r '.session_id // empty' 2>/dev/null)"
+OACB_SESSION_ID="${_raw_session_id:-$(date -u +%Y%m%d%H)}"
 
 # Only handle Bash; defer other tools to their own hooks.
 if [[ "$tool_name" != "Bash" ]]; then
