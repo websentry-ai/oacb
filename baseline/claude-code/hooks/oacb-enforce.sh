@@ -18,7 +18,7 @@ set -uo pipefail
 OACB_TIER="${OACB_TIER:-baseline}"
 OACB_AUDIT_LOG="${OACB_AUDIT_LOG:-$HOME/.claude/hooks/oacb-audit.log}"
 OACB_MAX_INPUT_BYTES="${OACB_MAX_INPUT_BYTES:-131072}"
-OACB_VERSION="0.1.1"
+OACB_VERSION="0.2.0"
 OACB_SHARED_DIR="${OACB_SHARED_DIR:-/usr/local/share/oacb/shared}"
 
 # --- agent-specific emit_block (Claude Code: exit 2 + stdout reason JSON) --

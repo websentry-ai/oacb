@@ -14,7 +14,7 @@ set -uo pipefail
 OACB_TIER="${OACB_TIER:-baseline}"
 OACB_AUDIT_LOG="${OACB_AUDIT_LOG:-$HOME/.codex/hooks/oacb-audit.log}"
 OACB_MCP_ALLOWLIST_FILE="${OACB_MCP_ALLOWLIST_FILE:-$HOME/.codex/oacb-mcp-allowlist.json}"
-OACB_VERSION="0.1.1"
+OACB_VERSION="0.2.0"
 
 emit_block() {
   local reason="$1"
