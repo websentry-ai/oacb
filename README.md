@@ -3,7 +3,7 @@
 Security hooks and settings for Claude Code running in autonomous (auto) mode. Enforces strict controls to prevent accidental or malicious damage by autonomous agents. 
 
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
-[![OACB v0.1.1](https://img.shields.io/badge/OACB-v0.1.1-green)](https://github.com/websentry-ai/oacb/releases)
+[![OACB v0.2.0](https://img.shields.io/badge/OACB-v0.2.0-green)](https://github.com/websentry-ai/oacb/releases)
 
 ---
 

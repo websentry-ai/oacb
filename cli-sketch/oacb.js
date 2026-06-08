@@ -22,7 +22,7 @@ const { runSetupAllBundle, checkRoot } = require('./setup');
 // OACB baseline content is pinned per release. Fetched from the OSS repo at
 // github.com/websentry-ai/oacb. Pinned commit hash is embedded at CLI build time.
 const OACB_BASELINE_SOURCE = 'https://raw.githubusercontent.com/websentry-ai/oacb';
-const OACB_PINNED_REF = 'v0.1.0'; // bumped per unbound-cli release
+const OACB_PINNED_REF = 'v0.2.0'; // bumped per unbound-cli release
 
 const TIERS = ['shadow', 'baseline', 'strict', 'paranoid'];
 
