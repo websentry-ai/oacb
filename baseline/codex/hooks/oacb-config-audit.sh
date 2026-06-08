@@ -15,7 +15,7 @@ set -uo pipefail
 OACB_TIER="${OACB_TIER:-baseline}"
 OACB_AUDIT_LOG="${OACB_AUDIT_LOG:-$HOME/.codex/hooks/oacb-audit.log}"
 OACB_REMOTE_AUDIT_URL="${OACB_REMOTE_AUDIT_URL:-}"
-OACB_VERSION="0.2.0"
+OACB_VERSION="0.2.1"
 
 mkdir -p "$(dirname "$OACB_AUDIT_LOG")" 2>/dev/null || true
 

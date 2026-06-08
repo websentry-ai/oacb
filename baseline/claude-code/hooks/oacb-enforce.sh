@@ -18,8 +18,32 @@ set -uo pipefail
 OACB_TIER="${OACB_TIER:-baseline}"
 OACB_AUDIT_LOG="${OACB_AUDIT_LOG:-$HOME/.claude/hooks/oacb-audit.log}"
 OACB_MAX_INPUT_BYTES="${OACB_MAX_INPUT_BYTES:-131072}"
-OACB_VERSION="0.2.0"
+OACB_VERSION="0.2.1"
 OACB_SHARED_DIR="${OACB_SHARED_DIR:-/usr/local/share/oacb/shared}"
+# Fall back to the hook's own directory when the MDM-default location is
+# unavailable. This lets CLI installs work without having to set
+# OACB_SHARED_DIR explicitly; MDM deployments that pre-populate
+# /usr/local/share/oacb/shared keep their existing behavior.
+if [[ ! -f "${OACB_SHARED_DIR}/oacb-enforce-core.sh" ]]; then
+  _oacb_orig_shared_dir="$OACB_SHARED_DIR"
+  OACB_SHARED_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  # Diagnostic: emit a structured audit line + stderr breadcrumb so fleet
+  # operators can detect mis-configured MDM paths from the audit log alone.
+  # Suppressed when OACB_DISABLE_FALLBACK_WARN=1 (e.g. self-host installs
+  # that intentionally don't ship the MDM path).
+  if [[ "${OACB_DISABLE_FALLBACK_WARN:-0}" != "1" ]]; then
+    mkdir -p "$(dirname "$OACB_AUDIT_LOG")" 2>/dev/null || true
+    printf '{"ts":"%s","decision":"info","tier":"%s","rule":"OACB-MDM-FALLBACK","reason":"shared-core not found at %s — falling back to %s","oacb_version":"%s"}\n' \
+      "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+      "$OACB_TIER" \
+      "$_oacb_orig_shared_dir" \
+      "$OACB_SHARED_DIR" \
+      "$OACB_VERSION" >>"$OACB_AUDIT_LOG" 2>/dev/null
+    printf 'OACB: shared-core not found at %s — using fallback %s\n' \
+      "$_oacb_orig_shared_dir" "$OACB_SHARED_DIR" >&2
+  fi
+  unset _oacb_orig_shared_dir
+fi
 
 # --- agent-specific emit_block (Claude Code: exit 2 + stdout reason JSON) --
 # Must be defined BEFORE sourcing the core (core sets a trap that references it).

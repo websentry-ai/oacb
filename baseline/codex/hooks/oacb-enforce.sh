@@ -18,7 +18,7 @@ set -uo pipefail
 OACB_TIER="${OACB_TIER:-baseline}"
 OACB_AUDIT_LOG="${OACB_AUDIT_LOG:-$HOME/.codex/hooks/oacb-audit.log}"
 OACB_MAX_INPUT_BYTES="${OACB_MAX_INPUT_BYTES:-131072}"
-OACB_VERSION="0.2.0"
+OACB_VERSION="0.2.1"
 # Resolve OACB_SHARED_DIR: injected by install (env block in config.toml);
 # falls back to the directory containing this script so the hook is self-contained
 # after `unbound oacb apply` copies oacb-enforce-core.sh alongside it.

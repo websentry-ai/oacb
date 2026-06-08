@@ -3,10 +3,10 @@
 Security hooks and settings for Claude Code running in autonomous (auto) mode. Enforces strict controls to prevent accidental or malicious damage by autonomous agents. 
 
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
-[![OACB v0.2.0 beta](https://img.shields.io/badge/OACB-v0.2.0%20beta-orange)](https://github.com/websentry-ai/oacb/releases)
-[![Status: Beta](https://img.shields.io/badge/status-beta-orange)](https://github.com/websentry-ai/oacb/releases/tag/v0.2.0)
+[![OACB v0.2.1 beta](https://img.shields.io/badge/OACB-v0.2.1%20beta-orange)](https://github.com/websentry-ai/oacb/releases)
+[![Status: Beta](https://img.shields.io/badge/status-beta-orange)](https://github.com/websentry-ai/oacb/releases/tag/v0.2.1)
 
-> **Beta release.** OACB is under active development. Interfaces — rule IDs, audit-log JSON schema, managed-settings keys, tier semantics — may change before `v1.0.0`. Recommended for evaluation, shadow-tier observation, and pre-production rollout. Pin a specific tag (`v0.2.0`) in fleet deployments; do not track `main` in production.
+> **Beta release.** OACB is under active development. Interfaces — rule IDs, audit-log JSON schema, managed-settings keys, tier semantics — may change before `v1.0.0`. Recommended for evaluation, shadow-tier observation, and pre-production rollout. Pin a specific tag (`v0.2.1`) in fleet deployments; do not track `main` in production.
 
 ---
 

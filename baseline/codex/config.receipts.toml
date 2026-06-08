@@ -6,7 +6,7 @@
 #
 # _oacb metadata (inline — Codex ignores unknown tables at strictValidation=false)
 # name:                 "OACB Codex Profile"
-# version:              "0.2.0"
+# version:              "0.2.1"
 # tier:                 "receipts"
 # repo:                 "https://github.com/websentry-ai/oacb"
 # risk_taxonomy_version: "1.0"

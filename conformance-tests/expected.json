@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "oacb_version": "0.2.0",
+    "oacb_version": "0.2.1",
     "description": "Case-level expected outcomes for conformance runner. Each case references a file in adversarial-corpus/cases/ or false-positive-corpus/. Tier outcomes: exit=2 means block, exit=0 means allow. stderr_contains is a substring match on rule ID.",
     "schema_version": 1
   },
