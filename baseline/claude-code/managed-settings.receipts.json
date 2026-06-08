@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/websentry-ai/oacb/main/schemas/managed-settings-0.2.json",
   "_oacb": {
     "name": "OACB Claude Code Auto Mode Profile",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "tier": "receipts",
     "repo": "https://github.com/websentry-ai/oacb",
     "supportedClaudeCodeRange": ">=2.1.83 <3.0.0",

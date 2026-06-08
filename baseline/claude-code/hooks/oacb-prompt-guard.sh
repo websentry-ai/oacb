@@ -19,7 +19,7 @@ set -uo pipefail
 
 OACB_TIER="${OACB_TIER:-baseline}"
 OACB_AUDIT_LOG="${OACB_AUDIT_LOG:-$HOME/.claude/hooks/oacb-audit.log}"
-OACB_VERSION="0.2.0"
+OACB_VERSION="0.2.1"
 
 emit_block() {
   local reason="$1"
